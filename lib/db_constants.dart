@@ -1,0 +1,24 @@
+const COMPANY_BOX_TYPE = 1;
+const SKILL_BOX_TYPE = 2;
+const SITE_BOX_TYPE = 3;
+const SITE_PAY_ROLE_BOX_TYPE = 4;
+const EMPLOYEE_BOX_TYPE = 5;
+const COMPANY_BILL_PAYMENT_BOX_TYPE = 6;
+const EMPLOYEE_ATTENDANCE_BOX_TYPE = 7;
+
+const TOKEN = 'token';
+const COMPANY_SYNCED_AT = 'company_synced_at';
+const SKILL_SYNCED_AT = 'skill_synced_at';
+const SITE_SYNCED_AT = 'site_synced_at';
+const EMPLOYEE_SYNCED_AT = 'employee_synced_at';
+const EMPLOYEE_ROLE_SYNCED_AT = 'employee_role_synced_at';
+const COMPANY_BILL_PAY_SYNCED_AT = 'company_bill_payment_synced_at';
+const EMPLOYEE_ATTENDANCE_SYNCED_AT = 'employee_attendance_synced_at';
+
+const BOX_USER_PREFS = "user_prefs";
+const BOX_COMPANY = "companies";
+const BOX_SKILL = "skills";
+const BOX_SITE = "sites";
+const BOX_EMPLOYEE = "employees";
+const BOX_COMPANY_BILL_PAYMENT = 'company_bill_payments';
+const BOX_EMPLOYEE_ATTENDANCE = 'employee_attendances';
