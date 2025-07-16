@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:work_ledger/models/employee.dart';
 import 'package:work_ledger/models/employee_attendance.dart';
 import 'package:work_ledger/db_models/db_employee.dart';
 import 'package:work_ledger/db_models/db_employee_attendance.dart';
+import 'package:work_ledger/models/site.dart';
 import 'package:work_ledger/widgets/three_state_switch.dart';
 
 class EmployeeAttendanceScreen extends StatefulWidget {
+  final Site site;
+  const EmployeeAttendanceScreen({super.key, required this.site});
   @override
   _EmployeeAttendanceScreenState createState() =>
       _EmployeeAttendanceScreenState();
@@ -22,11 +27,15 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
   final ScrollController fixedColumnVerticalController = ScrollController();
   final ScrollController fixedHeaderHorizontalController = ScrollController();
 
+  TextEditingController _searchController = TextEditingController();
+  String _searchText = '';
+
   int employeeBatchSize = 10;
   int loadedEmployeeCount = 0;
   bool isLoadingMoreEmployees = false;
   bool isLoadingMoreDates = false;
-  DateTime calendarStartDate = DateTime.now().subtract(Duration(days: 3));
+  DateTime calendarStartDate = DateTime.now().subtract(Duration(days: 4));
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -37,7 +46,11 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
 
     // Initially load 14 dates starting from calendarStartDate
     dates = List.generate(
-        5, (index) => calendarStartDate.add(Duration(days: index)));
+      5,
+      (index) => calendarStartDate.add(
+        Duration(days: index),
+      ),
+    );
 
     // Scroll sync listeners (your current implementation is perfect)
     // Add this listener to detect bottom vertical scroll:
@@ -88,6 +101,7 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
     final nextBatch = DBEmployee.getEmployees(
       offset: loadedEmployeeCount,
       limit: employeeBatchSize,
+      qry: _searchText,
     );
 
     if (nextBatch.isNotEmpty) {
@@ -105,9 +119,9 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
 
     isLoadingMoreDates = true;
 
-    final newStartDate = calendarStartDate.subtract(Duration(days: 7));
+    final newStartDate = calendarStartDate.subtract(Duration(days: 5));
     final newDates = List.generate(
-      7,
+      5,
       (index) => newStartDate.add(Duration(days: index)),
     );
 
@@ -118,52 +132,10 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
 
       // Maintain current visual position after prepending
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        horizontalController.jumpTo(horizontalController.offset + 7 * 160);
+        horizontalController.jumpTo(horizontalController.offset + 5 * 160);
       });
     });
   }
-
-  // @override
-  // void initState() {
-  //   super.initState();
-
-  //   employees = DBEmployee.getAllEmployees();
-  //   DateTime start = DateTime.now().subtract(Duration(days: 3));
-  //   dates = List.generate(14, (index) => start.add(Duration(days: index)));
-
-  //   // Sync: content -> fixed header
-  //   horizontalController.addListener(() {
-  //     if (fixedHeaderHorizontalController.offset !=
-  //         horizontalController.offset) {
-  //       fixedHeaderHorizontalController.jumpTo(horizontalController.offset);
-  //     }
-  //   });
-
-  //   // Sync: fixed header -> content
-  //   fixedHeaderHorizontalController.addListener(() {
-  //     if (horizontalController.offset !=
-  //         fixedHeaderHorizontalController.offset) {
-  //       horizontalController.jumpTo(fixedHeaderHorizontalController.offset);
-  //     }
-  //   });
-
-  //   // Sync: content -> fixed column
-  //   verticalController.addListener(() {
-  //     if (fixedColumnVerticalController.offset != verticalController.offset) {
-  //       fixedColumnVerticalController.jumpTo(verticalController.offset);
-  //     }
-  //   });
-
-  //   // Sync: fixed column -> content
-  //   fixedColumnVerticalController.addListener(() {
-  //     if (verticalController.offset != fixedColumnVerticalController.offset) {
-  //       verticalController.jumpTo(fixedColumnVerticalController.offset);
-  //     }
-  //   });
-
-  //   // Scroll to today
-  //   WidgetsBinding.instance.addPostFrameCallback((_) => scrollToToday());
-  // }
 
   void scrollToToday() {
     final index =
@@ -177,14 +149,6 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
     if (att.isFullDay) return 2;
     if (att.isHalfDay) return 1;
     return 0;
-  }
-
-  void setAttendanceState(EmployeeAttendance att, int index) {
-    att.isAbsence = index == 0;
-    att.isHalfDay = index == 1;
-    att.isFullDay = index == 2;
-    att.isSynced = false;
-    DBEmployeeAttendance.upsert(att);
   }
 
   Widget buildCell(Widget child, {Color? color}) {
@@ -207,6 +171,8 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
     horizontalController.dispose();
     fixedColumnVerticalController.dispose();
     fixedHeaderHorizontalController.dispose();
+    _debounce?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -216,10 +182,39 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
       appBar: AppBar(title: Text("Employee Attendance")),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+                _debounce = Timer(const Duration(milliseconds: 300), () {
+                  setState(() {
+                    employees = [];
+                    loadedEmployeeCount = 0;
+                    _searchText = value.trim().toLowerCase();
+                    loadMoreEmployees();
+                  });
+                });
+              },
+              decoration: InputDecoration(
+                hintText: "Search by name or mobile...",
+                prefixIcon: Icon(Icons.search),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
           // Top header row
           Row(
             children: [
-              buildCell(Text("Employee"), color: Colors.grey.shade300),
+              buildCell(
+                  Text(
+                    "EMPLOYEE",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  color: Colors.grey.shade300),
               Expanded(
                 child: SingleChildScrollView(
                   controller: fixedHeaderHorizontalController,
@@ -229,10 +224,20 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
                       bool isToday = DateUtils.isSameDay(date, DateTime.now());
                       return buildCell(
                         Column(
+                          mainAxisAlignment:
+                              MainAxisAlignment.center, // Vertical center
+                          crossAxisAlignment:
+                              CrossAxisAlignment.center, // Horizontal center
                           children: [
-                            Text(DateFormat('dd MMM').format(date),
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                            Text(DateFormat('EEE').format(date)),
+                            Text(
+                              DateFormat('dd MMM').format(date),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                            Text(
+                              DateFormat('EEE').format(date),
+                              style: TextStyle(fontSize: 18),
+                            ),
                           ],
                         ),
                         color: isToday
@@ -257,12 +262,19 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
                     children: employees.map((emp) {
                       return buildCell(
                         Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment:
+                              MainAxisAlignment.center, // Vertical center
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start, // Horizontal center
                           children: [
-                            Text(emp.name, style: TextStyle(fontSize: 14)),
-                            Text(emp.mobileNo,
-                                style: TextStyle(
-                                    fontSize: 12, color: Colors.grey)),
+                            Text(
+                              emp.name,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(emp.mobileNo, style: TextStyle(fontSize: 16)),
                           ],
                         ),
                         color: Colors.grey.shade100,
@@ -282,18 +294,15 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
                         children: employees.map((emp) {
                           return Row(
                             children: dates.map((date) {
-                              final att =
+                              final EmployeeAttendance? att =
                                   DBEmployeeAttendance.findByEmployeeForDate(
-                                          emp.id!, date) ??
-                                      EmployeeAttendance(
-                                        employeeId: emp.id!,
-                                        siteId: "1",
-                                        date: date,
-                                        isAbsence: true,
-                                      );
+                                      emp.id!, widget.site.id!, date);
+
                               final controller = TextEditingController(
-                                text: att.overtimeCount > 0
-                                    ? att.overtimeCount.toString()
+                                text: att != null
+                                    ? (att.overtimeCount > 0
+                                        ? att.overtimeCount.toStringAsFixed(0)
+                                        : '')
                                     : '',
                               );
 
@@ -305,9 +314,36 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
                                   children: [
                                     ThreeStateSwitch(
                                       labels: ['•', '½', '✓'],
-                                      selectedIndex: getAttendanceState(att),
+                                      selectedIndex: att != null
+                                          ? getAttendanceState(att)
+                                          : 0,
                                       onStateChanged: (i) {
-                                        setAttendanceState(att, i);
+                                        EmployeeAttendance? existingAttendance =
+                                            DBEmployeeAttendance
+                                                .findByEmployeeForDate(emp.id!,
+                                                    widget.site.id!, date);
+                                        if (existingAttendance != null) {
+                                          EmployeeAttendance updatedAtt =
+                                              existingAttendance
+                                                ..isAbsence = (i == 0)
+                                                ..isFullDay = (i == 2)
+                                                ..isHalfDay = (i == 1)
+                                                ..isSynced = false;
+                                          updatedAtt.save();
+                                        } else {
+                                          final newAtt = EmployeeAttendance(
+                                            id: "LOCAL-${DateTime.now().millisecondsSinceEpoch.toString()}", // or UUID
+                                            employeeId: emp.id!,
+                                            siteId: widget.site.id!,
+                                            date: date,
+                                            isAbsence: (i == 0),
+                                            isFullDay: (i == 2),
+                                            isHalfDay: (i == 1),
+                                            isSynced: false,
+                                          );
+                                          DBEmployeeAttendance.upsert(newAtt);
+                                        }
+
                                         setState(() {});
                                       },
                                       axis: Axis.horizontal,
@@ -322,10 +358,30 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
                                           TextInputType.numberWithOptions(
                                               decimal: true),
                                       onChanged: (val) {
-                                        att.overtimeCount =
+                                        double overtimeCount =
                                             double.tryParse(val) ?? 0;
-                                        att.isSynced = false;
-                                        DBEmployeeAttendance.upsert(att);
+
+                                        EmployeeAttendance? existingAttendance =
+                                            DBEmployeeAttendance
+                                                .findByEmployeeForDate(emp.id!,
+                                                    widget.site.id!, date);
+                                        if (existingAttendance != null) {
+                                          EmployeeAttendance updatedAtt =
+                                              existingAttendance
+                                                ..overtimeCount = overtimeCount
+                                                ..isSynced = false;
+                                          updatedAtt.save();
+                                        } else {
+                                          final newAtt = EmployeeAttendance(
+                                            id: "LOCAL-${DateTime.now().millisecondsSinceEpoch.toString()}", // or UUID
+                                            employeeId: emp.id!,
+                                            siteId: widget.site.id!,
+                                            date: date,
+                                            overtimeCount: overtimeCount,
+                                            isSynced: false,
+                                          );
+                                          DBEmployeeAttendance.upsert(newAtt);
+                                        }
                                       },
                                       decoration: InputDecoration(
                                         hintText: "00",

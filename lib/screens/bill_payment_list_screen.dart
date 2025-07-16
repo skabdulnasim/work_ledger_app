@@ -8,9 +8,9 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:intl/intl.dart';
 import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/db_models/db_company_bill_payment.dart';
-import 'package:work_ledger/db_models/db_user_prefs.dart';
 import 'package:work_ledger/models/company_bill_payment.dart';
 import 'package:work_ledger/models/site.dart';
+import 'package:work_ledger/screens/employee_attendance_screen.dart';
 import 'package:work_ledger/services/helper.dart';
 import 'package:work_ledger/services/secure_api_service.dart';
 import 'package:work_ledger/widgets/top_bar.dart';
@@ -285,7 +285,13 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
         onSelected: (value) async {
           switch (value) {
             case 'employee_attendance':
-              Navigator.pushNamed(context, '/employee_attendance');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EmployeeAttendanceScreen(site: widget.site),
+                ),
+              );
+
               break;
           }
         },

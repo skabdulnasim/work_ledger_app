@@ -23,9 +23,17 @@ class DBEmployee {
   }
 
   /// Get paginated employees
-  static List<Employee> getEmployees({int offset = 0, int limit = 10}) {
+  static List<Employee> getEmployees(
+      {int offset = 0, int limit = 10, String qry = ''}) {
     final box = Hive.box<Employee>(BOX_EMPLOYEE);
-    final allEmployees = box.values.toList();
+    var allEmployees = box.values.toList();
+    if (qry.isNotEmpty) {
+      allEmployees = allEmployees
+          .where((e) =>
+              e.name.toLowerCase().contains(qry.toLowerCase()) ||
+              e.mobileNo.contains(qry))
+          .toList();
+    }
     final end = (offset + limit) > allEmployees.length
         ? allEmployees.length
         : (offset + limit);

@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
         '/employee': (context) => EmployeeListScreen(),
         '/skill': (context) => SkillListScreen(),
         '/login': (context) => LoginScreen(),
-        '/employee_attendance': (context) => EmployeeAttendanceScreen(),
+        // '/employee_attendance': (context) => EmployeeAttendanceScreen(),
       },
     );
   }

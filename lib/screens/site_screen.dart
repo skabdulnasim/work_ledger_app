@@ -8,7 +8,6 @@ import 'package:work_ledger/models/site_payment_role.dart';
 import 'package:hive/hive.dart';
 import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/models/skill.dart';
-import 'package:work_ledger/services/secure_api_service.dart';
 import 'package:work_ledger/services/sync_manager.dart';
 
 class SiteScreen extends StatefulWidget {

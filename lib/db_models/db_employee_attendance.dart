@@ -16,11 +16,12 @@ class DBEmployeeAttendance {
   }
 
   static EmployeeAttendance? findByEmployeeForDate(
-      String employeeId, DateTime date) {
+      String employeeId, String siteId, DateTime date) {
     return Hive.box<EmployeeAttendance>(BOX_EMPLOYEE_ATTENDANCE)
         .values
         .firstWhereOrNull((e) =>
             e.employeeId == employeeId &&
+            e.siteId == siteId &&
             e.date.year == date.year &&
             e.date.month == date.month &&
             e.date.day == date.day);
@@ -34,15 +35,10 @@ class DBEmployeeAttendance {
     );
   }
 
+  /// Add or update company by ID
   static Future<void> upsert(EmployeeAttendance attendance) async {
     final box = Hive.box<EmployeeAttendance>(BOX_EMPLOYEE_ATTENDANCE);
-    final existing = find(attendance.id!);
-    if (existing != null) {
-      attendance.id = existing.id;
-      await box.put(existing.key, attendance);
-    } else {
-      await box.add(attendance);
-    }
+    await box.put(attendance.id, attendance);
   }
 
   static List<EmployeeAttendance> getUnsynced() {
