@@ -6,6 +6,7 @@ import 'package:work_ledger/db_models/db_user_prefs.dart';
 import 'package:work_ledger/models/employee.dart';
 import 'package:work_ledger/screens/login_screen.dart';
 import 'package:work_ledger/screens/employee_screen.dart';
+import 'package:work_ledger/services/helper.dart';
 import 'package:work_ledger/widgets/bottom_nav.dart';
 import 'package:work_ledger/widgets/top_bar.dart';
 
@@ -17,11 +18,16 @@ class EmployeeListScreen extends StatelessWidget {
     return Scaffold(
       appBar: TopBar(
         pageTitle: 'Employee',
-        actions: [
+        fixedAction: [],
+        menuActions: [
+          {'label': 'Salary Generate', 'value': 'salary_generate'},
           {'label': 'Logout', 'value': 'logout'},
         ],
         onSelected: (value) async {
           switch (value) {
+            case 'salary_generate':
+              Navigator.pushNamed(context, '/salaries');
+              break;
             case 'logout':
               await DBUserPrefs().savePreference(TOKEN, null);
               Navigator.pushReplacement(
@@ -46,8 +52,58 @@ class EmployeeListScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final employee = employees[index];
               return ListTile(
-                title: Text(employee.name),
-                subtitle: Text(employee.mobileNo),
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CircleAvatar(
+                      backgroundColor:
+                          Helper.getAvatarFillColor(), // Customize color
+                      child: Text(
+                        Helper.getAvatarText(
+                            employee.name), // Replace with dynamic initials
+                        style: TextStyle(
+                          color: Helper.getAvatarColor(),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 5,
+                    ),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            employee.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Text(employee.mobileNo)
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      width: 100,
+                      child: Text(
+                        employee.walletBalance.toStringAsFixed(2),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: employee.walletBalance > 0
+                              ? Colors.green
+                              : (employee.walletBalance < 0
+                                  ? Colors.red
+                                  : Colors.black),
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(

@@ -55,16 +55,21 @@ class DBSite {
   static Site? byServerId(String id) {
     final box = Hive.box<Site>(BOX_SITE);
 
-    return box.values.firstWhere(
-      (site) => site.serverId.toString() == id.toString(),
-    );
+    try {
+      return box.values.firstWhere((s) => s.serverId == id);
+    } catch (e) {
+      return null;
+    }
   }
 
   static Site? find(String id) {
     final box = Hive.box<Site>(BOX_SITE);
-
-    return box.values.firstWhere(
-      (site) => site.id.toString() == id.toString(),
-    );
+    try {
+      return box.values.firstWhere(
+        (site) => site.id.toString() == id.toString(),
+      );
+    } catch (e) {
+      return null;
+    }
   }
 }

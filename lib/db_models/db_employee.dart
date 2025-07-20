@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/models/employee.dart';
+import 'package:work_ledger/models/employee_wallet_transaction.dart';
 
 class DBEmployee {
   /// Open box (usually only once in main)
@@ -76,10 +77,13 @@ class DBEmployee {
 
   static Employee? byServerId(String id) {
     final box = Hive.box<Employee>(BOX_EMPLOYEE);
-
-    return box.values.firstWhere(
-      (employee) => employee.serverId.toString() == id.toString(),
-    );
+    try {
+      return box.values.firstWhere(
+        (employee) => employee.serverId.toString() == id.toString(),
+      );
+    } catch (e) {
+      return null;
+    }
   }
 
   static Employee? find(String id) {
@@ -88,5 +92,19 @@ class DBEmployee {
     return box.values.firstWhere(
       (employee) => employee.id.toString() == id.toString(),
     );
+  }
+
+  static Future<void> walletTransaction(
+      String id, EmployeeWalletTransaction tran) async {
+    final box = Hive.box<Employee>(BOX_EMPLOYEE);
+
+    Employee emp = box.values.firstWhere(
+      (employee) => employee.id.toString() == id.toString(),
+    );
+    double balance = tran.transactionType == 'credit'
+        ? emp.walletBalance + tran.amount
+        : emp.walletBalance + tran.amount;
+    emp = emp..walletBalance = balance;
+    await box.put(emp.id, emp);
   }
 }

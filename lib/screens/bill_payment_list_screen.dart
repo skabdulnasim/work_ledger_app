@@ -269,46 +269,37 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
         pageTitle: isSelectionMode
             ? "${_selectedMessageIds.length} selected"
             : widget.site.name,
-        actions: isSelectionMode
+        fixedAction: isSelectionMode
             ? [
                 IconButton(
                   icon: const Icon(Icons.delete),
                   onPressed: _deleteSelectedMessages,
                 ),
               ]
-            : [
-                {
-                  'label': 'Employee Attendance',
-                  'value': 'employee_attendance'
-                },
-              ],
+            : [],
+        menuActions: [
+          {'label': 'Employee Attendance', 'value': 'employee_attendance'},
+          {'label': 'Site Details', 'value': 'site'},
+        ],
         onSelected: (value) async {
           switch (value) {
             case 'employee_attendance':
-              Navigator.push(
+              Navigator.pushNamed(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => EmployeeAttendanceScreen(site: widget.site),
-                ),
+                '/attendance',
+                arguments: widget.site, // Pass the site object here
               );
-
+              break;
+            case 'site':
+              Navigator.pushNamed(
+                context,
+                '/site',
+                arguments: widget.site, // Pass the site object here
+              );
               break;
           }
         },
       ),
-      // AppBar(
-      //   title: Text(isSelectionMode
-      //       ? "${_selectedMessageIds.length} selected"
-      //       : widget.site.name),
-      //   actions: isSelectionMode
-      //       ? [
-      //           IconButton(
-      //             icon: const Icon(Icons.delete),
-      //             onPressed: _deleteSelectedMessages,
-      //           ),
-      //         ]
-      //       : [],
-      // ),
       body: GestureDetector(
         onTap: () {
           if (isSelectionMode) {

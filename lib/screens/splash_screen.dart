@@ -29,9 +29,15 @@ class _SplashScreenState extends State<SplashScreen> {
         () => SyncManager().syncSkillsFromServer(),
         () => SyncManager().syncPendingSkills(),
         () => SyncManager().syncSitesFromServer(),
+        () => SyncManager().syncPendingSites(),
         () => SyncManager().syncComBillPayFromServer(),
+        () => SyncManager().syncPendingCompanyBillPayments(),
         () => SyncManager().syncEmployeesFromServer(),
+        () => SyncManager().syncPendingEmployees(),
         () => SyncManager().syncEmployeeAttendancesFromServer(),
+        () => SyncManager().syncPendingEmployeeAttendances(),
+        () => SyncManager().syncEmployeeSalaryGeneratesFromServer(),
+        () => SyncManager().syncPendingEmployeeSalaryGenerates(),
       ]);
 
       await _runSyncSteps();

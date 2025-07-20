@@ -1,12 +1,16 @@
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
+import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/models/employee.dart';
 import 'package:work_ledger/models/employee_attendance.dart';
 import 'package:work_ledger/db_models/db_employee.dart';
 import 'package:work_ledger/db_models/db_employee_attendance.dart';
 import 'package:work_ledger/models/site.dart';
+import 'package:work_ledger/services/sync_manager.dart';
 import 'package:work_ledger/widgets/three_state_switch.dart';
 
 class EmployeeAttendanceScreen extends StatefulWidget {
@@ -317,34 +321,59 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
                                       selectedIndex: att != null
                                           ? getAttendanceState(att)
                                           : 0,
-                                      onStateChanged: (i) {
+                                      onStateChanged: (i) async {
+                                        EmployeeAttendance recentAttendance;
                                         EmployeeAttendance? existingAttendance =
                                             DBEmployeeAttendance
                                                 .findByEmployeeForDate(emp.id!,
                                                     widget.site.id!, date);
-                                        if (existingAttendance != null) {
-                                          EmployeeAttendance updatedAtt =
-                                              existingAttendance
-                                                ..isAbsence = (i == 0)
-                                                ..isFullDay = (i == 2)
-                                                ..isHalfDay = (i == 1)
-                                                ..isSynced = false;
-                                          updatedAtt.save();
-                                        } else {
-                                          final newAtt = EmployeeAttendance(
-                                            id: "LOCAL-${DateTime.now().millisecondsSinceEpoch.toString()}", // or UUID
-                                            employeeId: emp.id!,
-                                            siteId: widget.site.id!,
-                                            date: date,
-                                            isAbsence: (i == 0),
-                                            isFullDay: (i == 2),
-                                            isHalfDay: (i == 1),
-                                            isSynced: false,
-                                          );
-                                          DBEmployeeAttendance.upsert(newAtt);
-                                        }
+                                        try {
+                                          final attBox =
+                                              Hive.box<EmployeeAttendance>(
+                                                  BOX_EMPLOYEE_ATTENDANCE);
+                                          if (existingAttendance != null) {
+                                            EmployeeAttendance updatedAtt =
+                                                existingAttendance
+                                                  ..isAbsence = (i == 0)
+                                                  ..isFullDay = (i == 2)
+                                                  ..isHalfDay = (i == 1)
+                                                  ..isSynced = false;
+                                            updatedAtt.save();
+                                            recentAttendance = updatedAtt;
+                                          } else {
+                                            final newAtt = EmployeeAttendance(
+                                              id: "LOCAL-${DateTime.now().millisecondsSinceEpoch.toString()}", // or UUID
+                                              employeeId: emp.id!,
+                                              siteId: widget.site.id!,
+                                              date: date,
+                                              isAbsence: (i == 0),
+                                              isFullDay: (i == 2),
+                                              isHalfDay: (i == 1),
+                                              isSynced: false,
+                                            );
+                                            attBox.add(newAtt);
+                                            recentAttendance = newAtt;
+                                          }
 
-                                        setState(() {});
+                                          setState(() {});
+
+                                          // Start silent sync in background
+                                          final conn = await Connectivity()
+                                              .checkConnectivity();
+                                          if (conn != ConnectivityResult.none &&
+                                              !recentAttendance.isSynced) {
+                                            print(
+                                                "=============>>>${recentAttendance.toJson()}");
+                                            SyncManager()
+                                                .syncEmployeeAttendanceToServer(
+                                                    recentAttendance);
+                                          }
+                                        } catch (e) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(SnackBar(
+                                              content: Text(e.toString())));
+                                        }
                                       },
                                       axis: Axis.horizontal,
                                     ),
@@ -357,30 +386,53 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
                                       keyboardType:
                                           TextInputType.numberWithOptions(
                                               decimal: true),
-                                      onChanged: (val) {
+                                      onChanged: (val) async {
                                         double overtimeCount =
                                             double.tryParse(val) ?? 0;
-
+                                        EmployeeAttendance recentAttendance;
                                         EmployeeAttendance? existingAttendance =
                                             DBEmployeeAttendance
                                                 .findByEmployeeForDate(emp.id!,
                                                     widget.site.id!, date);
-                                        if (existingAttendance != null) {
-                                          EmployeeAttendance updatedAtt =
-                                              existingAttendance
-                                                ..overtimeCount = overtimeCount
-                                                ..isSynced = false;
-                                          updatedAtt.save();
-                                        } else {
-                                          final newAtt = EmployeeAttendance(
-                                            id: "LOCAL-${DateTime.now().millisecondsSinceEpoch.toString()}", // or UUID
-                                            employeeId: emp.id!,
-                                            siteId: widget.site.id!,
-                                            date: date,
-                                            overtimeCount: overtimeCount,
-                                            isSynced: false,
-                                          );
-                                          DBEmployeeAttendance.upsert(newAtt);
+                                        try {
+                                          final attBox =
+                                              Hive.box<EmployeeAttendance>(
+                                                  BOX_EMPLOYEE_ATTENDANCE);
+                                          if (existingAttendance != null) {
+                                            EmployeeAttendance updatedAtt =
+                                                existingAttendance
+                                                  ..overtimeCount =
+                                                      overtimeCount
+                                                  ..isSynced = false;
+                                            updatedAtt.save();
+                                            recentAttendance = updatedAtt;
+                                          } else {
+                                            final newAtt = EmployeeAttendance(
+                                              id: "LOCAL-${DateTime.now().millisecondsSinceEpoch.toString()}", // or UUID
+                                              employeeId: emp.id!,
+                                              siteId: widget.site.id!,
+                                              date: date,
+                                              overtimeCount: overtimeCount,
+                                              isSynced: false,
+                                            );
+                                            attBox.add(newAtt);
+                                            recentAttendance = newAtt;
+                                          }
+
+                                          // Start silent sync in background
+                                          final conn = await Connectivity()
+                                              .checkConnectivity();
+                                          if (conn != ConnectivityResult.none &&
+                                              !recentAttendance.isSynced) {
+                                            SyncManager()
+                                                .syncEmployeeAttendanceToServer(
+                                                    recentAttendance);
+                                          }
+                                        } catch (e) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(SnackBar(
+                                              content: Text(e.toString())));
                                         }
                                       },
                                       decoration: InputDecoration(

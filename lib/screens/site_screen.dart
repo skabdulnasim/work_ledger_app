@@ -1,6 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:work_ledger/db_models/db_company.dart';
+import 'package:work_ledger/db_models/db_site.dart';
 import 'package:work_ledger/db_models/db_skill.dart';
 import 'package:work_ledger/models/company.dart';
 import 'package:work_ledger/models/site.dart';
@@ -85,12 +86,7 @@ class _SiteScreenState extends State<SiteScreen> {
       ..companyId = selectedCompany!.id!
       ..sitePaymentRoles = sitePaymentRoles;
     try {
-      final box = Hive.box<Site>(BOX_SITE);
-      if (!updated.isInBox) {
-        await box.add(updated);
-      } else {
-        await updated.save();
-      }
+      DBSite.upsertSite(updated);
 
       ScaffoldMessenger.of(
         context,
@@ -266,7 +262,7 @@ class _SiteScreenState extends State<SiteScreen> {
                             sitePaymentRoles[index].overtimeRate.toString(),
                         onChanged: (value) {
                           sitePaymentRoles[index].overtimeRate =
-                              double.parse(value);
+                              double.tryParse(value)!;
                         },
                         validator: (value) {
                           if (value != null &&

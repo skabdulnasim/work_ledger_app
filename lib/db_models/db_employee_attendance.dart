@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:hive/hive.dart';
 import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/models/employee_attendance.dart';
+import 'package:work_ledger/services/helper.dart';
 
 class DBEmployeeAttendance {
   static Future<void> openBox() async {
@@ -10,9 +11,55 @@ class DBEmployeeAttendance {
     }
   }
 
-  static List<EmployeeAttendance> getAll() {
+  // static List<EmployeeAttendance> getAll() {
+  //   final box = Hive.box<EmployeeAttendance>(BOX_EMPLOYEE_ATTENDANCE);
+  //   return box.values.toList();
+  // }
+
+  static List<EmployeeAttendance> getAll({
+    String? employeeId,
+    DateTime? fromDate,
+    DateTime? toDate,
+    int? page = 1,
+    int? pageSize = 20,
+  }) {
+    final all = Hive.box<EmployeeAttendance>(BOX_EMPLOYEE_ATTENDANCE)
+        .values
+        .where((txn) {
+      final matchesEmployee =
+          employeeId == null || txn.employeeId == employeeId;
+      final matchesDate = (fromDate == null ||
+              txn.date.isAtSameMomentAs(fromDate) ||
+              txn.date.isAfter(Helper.beginningOfDay(fromDate))) &&
+          (toDate == null ||
+              txn.date.isAtSameMomentAs(toDate) ||
+              txn.date.isBefore(Helper.endOfDay(toDate)));
+      final matchesPresencs = txn.isFullDay || txn.isHalfDay;
+      return matchesEmployee && matchesDate && matchesPresencs;
+    }).toList();
+
+    // Apply pagination
+    if (page != null && pageSize != null) {
+      final start = (page - 1) * pageSize;
+      // final end = start + pageSize;
+      return all.skip(start).take(pageSize).toList();
+    }
+
+    return all;
+  }
+
+  static List<EmployeeAttendance> getEmployeeAttendances(
+      String employeeId, DateTime fromDate, DateTime toDate) {
     final box = Hive.box<EmployeeAttendance>(BOX_EMPLOYEE_ATTENDANCE);
-    return box.values.toList();
+    final attendances = box.values
+        .where((att) =>
+            att.employeeId == employeeId &&
+            (att.date.isAtSameMomentAs(Helper.beginningOfDay(fromDate)) ||
+                att.date.isAtSameMomentAs(Helper.endOfDay(toDate)) ||
+                (att.date.isAfter(Helper.beginningOfDay(fromDate)) &&
+                    att.date.isBefore(Helper.endOfDay(toDate)))))
+        .toList();
+    return attendances;
   }
 
   static EmployeeAttendance? findByEmployeeForDate(

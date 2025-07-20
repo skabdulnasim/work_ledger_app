@@ -561,4 +561,53 @@ class SecureApiService {
       return null;
     }
   }
+
+  // ----------------------------
+  // LIST EMPLOYEE SALARY GENERATEs (INDEX)
+  // ----------------------------
+  static Future<List<Map<String, dynamic>>>
+      fetchEmployeeSalaryGenerateFromServer() async {
+    try {
+      String apiURL = '${API_PATH}employee_salary_generates?ANY_FIXED_PARAMS=0';
+      String lastSyncedAt = await DBUserPrefs().getPreference(
+        EMPLOYEE_SALARY_GRNERATE_SYNCED_AT,
+      );
+      if (lastSyncedAt.isNotEmpty) {
+        apiURL = '$apiURL&updated_after=$lastSyncedAt';
+      }
+      final res =
+          await http.get(Uri.parse(apiURL), headers: await getHeaders());
+      if (res.statusCode == 200) {
+        final List data = json.decode(res.body);
+        return List<Map<String, dynamic>>.from(data);
+      } else {
+        print("Failed to fetch salary generates");
+        return [];
+      }
+    } catch (e) {
+      print("Fetch error: $e");
+      return [];
+    }
+  }
+
+  // ----------------------------
+  // CREATE EMPLOYEE SALARY GENERATE
+  // ----------------------------
+  static Future<Map<String, dynamic>?> createEmployeeSalaryGenerate(
+      Map<String, dynamic> payload) async {
+    try {
+      final url = '${API_PATH}employee_salary_generates/generate';
+      final res = await http.post(Uri.parse(url),
+          headers: await getHeaders(), body: jsonEncode(payload));
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return json.decode(res.body);
+      } else {
+        print("Create failed: ${res.body}");
+        return null;
+      }
+    } catch (e) {
+      print("Create error: $e");
+      return null;
+    }
+  }
 }

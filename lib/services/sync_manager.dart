@@ -5,7 +5,11 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/db_models/db_company.dart';
+import 'package:work_ledger/db_models/db_company_bill_payment.dart';
 import 'package:work_ledger/db_models/db_employee.dart';
+import 'package:work_ledger/db_models/db_employee_attendance.dart';
+import 'package:work_ledger/db_models/db_employee_salary_generate.dart';
+import 'package:work_ledger/db_models/db_employee_wallet_transaction.dart';
 import 'package:work_ledger/db_models/db_site.dart';
 import 'package:work_ledger/db_models/db_skill.dart';
 import 'package:work_ledger/db_models/db_user_prefs.dart';
@@ -13,6 +17,8 @@ import 'package:work_ledger/models/company.dart';
 import 'package:work_ledger/models/company_bill_payment.dart';
 import 'package:work_ledger/models/employee.dart';
 import 'package:work_ledger/models/employee_attendance.dart';
+import 'package:work_ledger/models/employee_salary_generate.dart';
+import 'package:work_ledger/models/employee_wallet_transaction.dart';
 import 'package:work_ledger/models/site.dart';
 import 'package:work_ledger/models/site_payment_role.dart';
 import 'package:work_ledger/models/skill.dart';
@@ -86,12 +92,8 @@ class SyncManager {
       final companiesFromServer =
           await SecureApiService.fetchCompaniesFromServer();
 
-      final box = Hive.box<Company>(BOX_COMPANY);
       for (final company in companiesFromServer) {
-        final existingCompany = box.values.firstWhereOrNull(
-          (c) => c.serverId == company.serverId,
-        );
-
+        final existingCompany = DBCompany.byServerId(company.serverId!);
         if (existingCompany != null) {
           // Update existing
           existingCompany
@@ -114,7 +116,7 @@ class SyncManager {
             isSynced: true,
           );
 
-          await box.add(newCompany);
+          DBCompany.upsertCompany(newCompany);
         }
       }
       await DBUserPrefs().savePreference(
@@ -166,11 +168,8 @@ class SyncManager {
     try {
       final skillsFromServer = await SecureApiService.fetchSkillsFromServer();
 
-      final box = Hive.box<Skill>(BOX_SKILL);
       for (final skill in skillsFromServer) {
-        final existingSkill = box.values.firstWhereOrNull(
-          (c) => c.serverId == skill.serverId,
-        );
+        final existingSkill = DBSkill.byServerId(skill.serverId!);
 
         if (existingSkill != null) {
           // Update existing
@@ -188,7 +187,7 @@ class SyncManager {
             isSynced: true,
           );
 
-          await box.add(newSkill);
+          DBSkill.upsertSkill(newSkill);
         }
       }
       await DBUserPrefs().savePreference(
@@ -196,7 +195,7 @@ class SyncManager {
         Helper.getCurrentDateTime(),
       );
     } catch (e) {
-      print("Failed to sync companies: $e");
+      print("Failed to sync skill: $e");
     }
   }
 
@@ -232,6 +231,8 @@ class SyncManager {
         };
 
         if (site.serverId != null) {
+          print("_________EXISTING_________");
+
           final response =
               await SecureApiService.updateSite(payload, site.serverId!);
 
@@ -243,11 +244,12 @@ class SyncManager {
           }
         } else {
           final response = await SecureApiService.createSite(payload);
-
-          if (response != null && response['id'] != null) {
+          if (response != null &&
+              response['data'] != null &&
+              response['data']['id'] != null) {
             // Update company with server ID and mark as synced
             site
-              ..serverId = response['id'].toString()
+              ..serverId = response['data']['id'].toString()
               ..isSynced = true;
 
             await site.save(); // Save updated info to Hive
@@ -262,12 +264,9 @@ class SyncManager {
   Future<void> syncSitesFromServer() async {
     try {
       final sitesFromServer = await SecureApiService.fetchSitesFromServer();
-      final box = Hive.box<Site>(BOX_SITE);
-      for (final site in sitesFromServer) {
-        final existingSite = box.values.firstWhereOrNull(
-          (c) => c.serverId == site['id'],
-        );
 
+      for (final site in sitesFromServer) {
+        Site? existingSite = DBSite.byServerId(site['id'].toString());
         if (existingSite != null) {
           // Update existing
           final companyServerId = site['company_id'].toString();
@@ -323,8 +322,7 @@ class SyncManager {
             sitePaymentRoles: sitePaymentRoles,
             isSynced: true,
           );
-
-          await box.add(newSite);
+          DBSite.upsertSite(newSite);
         }
       }
       await DBUserPrefs().savePreference(
@@ -332,7 +330,7 @@ class SyncManager {
         Helper.getCurrentDateTime(),
       );
     } catch (e) {
-      print("Failed to sync sites: $e");
+      print("Failed to sync sites from server: $e");
     }
   }
 
@@ -361,11 +359,9 @@ class SyncManager {
     try {
       final comBillFromServer =
           await SecureApiService.fetchCompanyBillPaymentsFromServer();
-      final box = Hive.box<CompanyBillPayment>(BOX_COMPANY_BILL_PAYMENT);
       for (final cBillPay in comBillFromServer) {
-        final existing = box.values.firstWhereOrNull(
-          (c) => c.serverId == cBillPay['id'],
-        );
+        final existing =
+            DBCompanyBillPayment.byServerId(cBillPay['id'].toString());
 
         if (existing != null) {
           // Update existing
@@ -447,7 +443,7 @@ class SyncManager {
             isSynced: true,
           );
 
-          await box.add(newPayment);
+          DBCompanyBillPayment.upsertCompanyBillPayment(newPayment);
         }
       }
       await DBUserPrefs().savePreference(
@@ -510,11 +506,9 @@ class SyncManager {
     try {
       final employeesFromServer =
           await SecureApiService.fetchEmployeeFromServer();
-      final box = Hive.box<Employee>(BOX_EMPLOYEE);
       for (final employee in employeesFromServer) {
-        final existingEmployee = box.values.firstWhereOrNull(
-          (c) => c.serverId == employee['id'],
-        );
+        final existingEmployee =
+            DBEmployee.byServerId(employee['id'].toString());
 
         if (existingEmployee != null) {
           // Update existing
@@ -544,7 +538,7 @@ class SyncManager {
             isSynced: true,
           );
 
-          await box.add(newEmployee);
+          DBEmployee.upsertEmployee(newEmployee);
         }
       }
       await DBUserPrefs().savePreference(
@@ -598,7 +592,7 @@ class SyncManager {
             siteId: localSite!.id!,
             employeeId: localEmployee!.id!,
             date: DateTime.parse(attendance['date']),
-            overtimeCount: attendance['overtime_count'],
+            overtimeCount: double.tryParse(attendance['overtime_count'])!,
             isAbsence: attendance['is_absence'],
             isFullDay: attendance['is_full_day'],
             isHalfDay: attendance['is_half_day'],
@@ -614,7 +608,7 @@ class SyncManager {
         Helper.getCurrentDateTime(),
       );
     } catch (e) {
-      print("Failed to sync employees: $e");
+      print("Failed to sync employee attendances: $e");
     }
   }
 
@@ -630,8 +624,8 @@ class SyncManager {
   Future<void> syncEmployeeAttendanceToServer(
       EmployeeAttendance attendance) async {
     try {
-      final localEmployee = DBEmployee.byServerId(attendance.employeeId);
-      final localSite = DBSite.byServerId(attendance.siteId);
+      final localEmployee = DBEmployee.find(attendance.employeeId);
+      final localSite = DBSite.find(attendance.siteId);
       final payload = {
         "employee_attendance": {
           "employee_id": localEmployee!.serverId!,
@@ -644,6 +638,8 @@ class SyncManager {
           "remarks": attendance.remarks,
         },
       };
+
+      print(payload);
 
       if (attendance.serverId != null) {
         final response = await SecureApiService.updateEmployeeAttendance(
@@ -670,6 +666,116 @@ class SyncManager {
       }
     } catch (e) {
       print("Background sync failed: $e");
+    }
+  }
+
+  Future<void> syncPendingEmployeeSalaryGenerates() async {
+    final unsynced = DBEmployeeSalaryGenerate.getUnSynced();
+    for (final salary in unsynced) {
+      await syncEmployeeSalaryGenerateToServer(salary);
+    }
+  }
+
+  Future<void> syncEmployeeSalaryGenerateToServer(
+      EmployeeSalaryGenerate salary) async {
+    try {
+      final payload = salary.toJson();
+      Map<String, dynamic>? response;
+      response = await SecureApiService.createEmployeeSalaryGenerate(payload);
+
+      if (response != null && response['id'] != null) {
+        // Update company with server ID and mark as synced
+        salary
+          ..serverId = response['id'].toString()
+          ..isSynced = true;
+
+        await salary.save(); // Save updated info to Hive
+      }
+    } catch (e) {
+      print("Sync failed: $e");
+    }
+  }
+
+  Future<void> syncEmployeeSalaryGeneratesFromServer() async {
+    final salaries =
+        await SecureApiService.fetchEmployeeSalaryGenerateFromServer();
+    final box = Hive.box<EmployeeSalaryGenerate>(BOX_EMPLOYEE_SALARY_GENERATE);
+
+    for (final s in salaries) {
+      final exists = box.values.any(
+        (e) => e.serverId == s['id'].toString(),
+      );
+
+      if (!exists) {
+        final newSalary = EmployeeSalaryGenerate(
+          id: "LOCAL-${DateTime.now().millisecondsSinceEpoch}",
+          serverId: s['id'].toString(),
+          title: s['title'] ?? '',
+          fromDate: DateTime.parse(s['from_date']),
+          toDate: DateTime.parse(s['to_date']),
+          remarks: s['remarks'],
+          isSynced: true,
+        );
+
+        DBEmployeeSalaryGenerate.upsert(newSalary);
+
+        List<Employee> allEmployees = DBEmployee.getAllEmployees();
+        for (var employee in allEmployees) {
+          // Filter attendance within date range
+          final attendances = DBEmployeeAttendance.getEmployeeAttendances(
+              employee.id!, newSalary.fromDate, newSalary.toDate);
+
+          double totalAttendanceAmount = 0;
+          double totalOtAmount = 0;
+
+          for (final rec in attendances) {
+            double otRate = 0;
+            double dayRate = 0;
+
+            final site = DBSite.find(rec.siteId);
+            if (site != null) {
+              final paymentRole = site.sitePaymentRoles
+                  ?.firstWhere((role) => role.skillId == employee.skillId);
+              if (paymentRole != null) {
+                otRate = paymentRole.overtimeRate;
+                dayRate = paymentRole.dailyWage;
+              }
+            }
+
+            if (rec.isFullDay == true) {
+              totalAttendanceAmount += dayRate;
+            }
+
+            if (rec.isHalfDay == true) {
+              totalAttendanceAmount += (dayRate * 0.5);
+            }
+            if (rec.overtimeCount > 0) {
+              totalOtAmount += (rec.overtimeCount * otRate);
+            }
+          }
+
+          employee.walletBalance += (totalAttendanceAmount + totalOtAmount);
+          await employee.save();
+
+          // Create wallet transaction
+          final transaction = EmployeeWalletTransaction(
+            id: "LOCAL-${DateTime.now().millisecondsSinceEpoch}",
+            employeeId: employee.id!,
+            amount: (totalAttendanceAmount + totalOtAmount),
+            transactionAt: DateTime.now(),
+            createdAt: DateTime.now(),
+            transactionType: 'credit',
+            transactionableId: newSalary.id!,
+            transactionableType: 'EmployeeSalaryGenerate',
+            remarks: "Salary credited to wallet for ${newSalary.title}",
+          );
+          await DBEmployeeWalletTransaction.upsert(transaction);
+        }
+        await DBUserPrefs().savePreference(
+          EMPLOYEE_SALARY_GRNERATE_SYNCED_AT,
+          Helper.getCurrentDateTime(),
+        );
+      }
     }
   }
 }

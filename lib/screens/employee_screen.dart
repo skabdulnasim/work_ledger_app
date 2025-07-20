@@ -6,6 +6,8 @@ import 'package:hive/hive.dart';
 import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/models/skill.dart';
 import 'package:work_ledger/services/sync_manager.dart';
+import 'package:work_ledger/widgets/employee_attendance_tab.dart';
+import 'package:work_ledger/widgets/employee_wallet_tab.dart';
 
 class EmployeeScreen extends StatefulWidget {
   final Employee employee;
@@ -83,7 +85,7 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Employee Details"),
+        title: Text(widget.employee.name),
         actions: [
           IconButton(
             icon: Icon(isEditing ? Icons.check : Icons.edit),
@@ -161,19 +163,47 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
   }
 
   Widget _buildViewMode() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("Name", style: labelStyle),
-        Text(widget.employee.name, style: valueStyle),
-        const SizedBox(height: 16),
-        Text("Address", style: labelStyle),
-        Text(widget.employee.address, style: valueStyle),
-        const SizedBox(height: 16),
-        Text("Skill", style: labelStyle),
-        Text(selectedSkill!.name, style: valueStyle),
-        const SizedBox(height: 16),
-      ],
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Name", style: labelStyle),
+              Text(widget.employee.name, style: valueStyle),
+              const SizedBox(height: 16),
+              Text("Address", style: labelStyle),
+              Text(widget.employee.address, style: valueStyle),
+              const SizedBox(height: 16),
+              Text("Skill", style: labelStyle),
+              Text(selectedSkill?.name ?? "-", style: valueStyle),
+              const SizedBox(height: 16),
+            ],
+          ),
+          const TabBar(
+            tabs: [
+              Tab(text: 'Attendance'),
+              Tab(text: 'Wallet Tran.'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Make sure the TabBarView is inside a fixed-height container
+          Expanded(
+            child: TabBarView(
+              children: [
+                EmployeeAttendanceTab(
+                  employee: widget.employee,
+                ),
+                EmployeeWalletTab(
+                  employee: widget.employee,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

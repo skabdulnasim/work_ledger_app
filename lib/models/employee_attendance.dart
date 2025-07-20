@@ -6,7 +6,7 @@ part 'employee_attendance.g.dart';
 @HiveType(typeId: EMPLOYEE_ATTENDANCE_BOX_TYPE)
 class EmployeeAttendance extends HiveObject {
   @HiveField(0)
-  String? id; // Local ID (Hive)
+  String? id;
 
   @HiveField(1)
   String employeeId; // Local Employee Hive ID

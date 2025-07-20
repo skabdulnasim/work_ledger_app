@@ -58,17 +58,23 @@ class DBCompany {
 
   static Company? byServerId(String id) {
     final box = Hive.box<Company>(BOX_COMPANY);
-
-    return box.values.firstWhere(
-      (company) => company.serverId.toString() == id.toString(),
-    );
+    try {
+      return box.values.firstWhere(
+        (company) => company.serverId == id,
+      );
+    } catch (e) {
+      return null;
+    }
   }
 
   static Company? find(String id) {
     final box = Hive.box<Company>(BOX_COMPANY);
-
-    return box.values.firstWhere(
-      (company) => company.id.toString() == id.toString(),
-    );
+    try {
+      return box.values.firstWhere(
+        (company) => company.id.toString() == id.toString(),
+      );
+    } catch (e) {
+      return null;
+    }
   }
 }

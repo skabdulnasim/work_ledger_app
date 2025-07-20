@@ -4,9 +4,8 @@ import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/db_models/db_user_prefs.dart';
 import 'package:work_ledger/models/site.dart';
 import 'package:work_ledger/db_models/db_site.dart';
-import 'package:work_ledger/screens/bill_payment_list_screen.dart';
 import 'package:work_ledger/screens/login_screen.dart';
-import 'package:work_ledger/screens/site_screen.dart';
+import 'package:work_ledger/services/helper.dart';
 import 'package:work_ledger/widgets/bottom_nav.dart';
 import 'package:work_ledger/widgets/top_bar.dart';
 
@@ -18,14 +17,15 @@ class SiteListScreen extends StatelessWidget {
     return Scaffold(
       appBar: TopBar(
         pageTitle: 'Sites',
-        actions: [
+        fixedAction: [],
+        menuActions: [
           {'label': 'Company', 'value': 'company'},
           {'label': 'Logout', 'value': 'logout'},
         ],
         onSelected: (value) async {
           switch (value) {
             case 'company':
-              Navigator.pushNamed(context, '/company');
+              Navigator.pushNamed(context, '/companies');
               break;
             case 'logout':
               await DBUserPrefs().savePreference(TOKEN, null);
@@ -51,13 +51,47 @@ class SiteListScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final site = sites[index];
               return ListTile(
-                title: Text(site.name),
-                subtitle: Text(site.address),
-                onTap: () => Navigator.push(
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CircleAvatar(
+                      backgroundColor:
+                          Helper.getAvatarFillColor(), // Customize color
+                      child: Text(
+                        Helper.getAvatarText(
+                            site.name), // Replace with dynamic initials
+                        style: TextStyle(
+                          color: Helper.getAvatarColor(),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 5,
+                    ),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            site.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Text(site.address)
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                onTap: () => Navigator.pushNamed(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => BillPaymentListScreen(site: site),
-                  ),
+                  '/bill_payments',
+                  arguments: site, // Pass the site object here
                 ),
               );
             },
@@ -72,11 +106,10 @@ class SiteListScreen extends StatelessWidget {
             address: '',
             companyId: '', // Required, set in form
           );
-          final result = await Navigator.push(
+          final result = Navigator.pushNamed(
             context,
-            MaterialPageRoute(
-              builder: (_) => SiteScreen(site: newSite),
-            ),
+            '/site',
+            arguments: newSite,
           );
 
           if (result == true) {

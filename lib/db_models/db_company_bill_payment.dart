@@ -60,10 +60,13 @@ class DBCompanyBillPayment {
 
   static CompanyBillPayment? byServerId(String id) {
     final box = Hive.box<CompanyBillPayment>(BOX_COMPANY_BILL_PAYMENT);
-
-    return box.values.firstWhere(
-      (site) => site.serverId.toString() == id.toString(),
-    );
+    try {
+      return box.values.firstWhere(
+        (site) => site.serverId.toString() == id.toString(),
+      );
+    } catch (e) {
+      return null;
+    }
   }
 
   static CompanyBillPayment? find(String id) {

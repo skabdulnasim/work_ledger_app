@@ -10,20 +10,11 @@ class BottomNav extends StatelessWidget {
   void _onTap(BuildContext context, int index) {
     if (index == currentIndex) return;
     if (index == 0) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => EmployeeListScreen()),
-      );
+      Navigator.pushNamed(context, '/employees');
     } else if (index == 1) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => SiteListScreen()),
-      );
+      Navigator.pushNamed(context, '/sites');
     } else if (index == 2) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => SkillListScreen()),
-      );
+      Navigator.pushNamed(context, '/skills');
     }
   }
 
@@ -69,8 +60,8 @@ class BottomNav extends StatelessWidget {
               child: Icon(Icons.location_on,
                   size: 32,
                   color: currentIndex == 1
-                      ? Colors.white
-                      : const Color.fromARGB(234, 255, 255, 255)),
+                      ? Colors.blueAccent
+                      : Colors.grey.shade600),
             ),
           ),
         ),

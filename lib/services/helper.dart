@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:work_ledger/db_constants.dart';
@@ -49,6 +51,12 @@ class Helper {
           await SyncManager().syncEmployeesFromServer();
           await SyncManager().syncPendingEmployees();
 
+          await SyncManager().syncEmployeeAttendancesFromServer();
+          await SyncManager().syncPendingEmployeeAttendances();
+
+          await SyncManager().syncEmployeeSalaryGeneratesFromServer();
+          await SyncManager().syncPendingEmployeeSalaryGenerates();
+
           print("SYNCING END...");
         }
       }
@@ -71,12 +79,29 @@ class Helper {
     _subscription.cancel();
   }
 
+  static DateTime beginningOfDay(DateTime dateTime) {
+    return DateTime(dateTime.year, dateTime.month, dateTime.day, 0, 0, 0);
+  }
+
+  static DateTime endOfDay(DateTime dateTime) {
+    return DateTime(
+        dateTime.year, dateTime.month, dateTime.day, 23, 59, 59, 999);
+  }
+
   static String getCurrentDateTime() {
     return DateFormat("yyyy-MM-dd HH:mm").format(DateTime.now());
   }
 
   static String getFullDateTime(DateTime dateTime) {
     return DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime);
+  }
+
+  static String getJustDate(DateTime dateTime) {
+    return DateFormat('yyyy-MM-dd').format(dateTime);
+  }
+
+  static String getJustTime(DateTime dateTime) {
+    return DateFormat('HH:mm:ss').format(dateTime);
   }
 
   static DateTime getDateTime(String dateTime) {
@@ -93,19 +118,41 @@ class Helper {
     ).parse(formattedDateTimeString);
   }
 
-  static DateTime beginningOfDay(DateTime dateTime) {
-    return DateTime(dateTime.year, dateTime.month, dateTime.day, 0, 0, 0);
+  static String getAvatarText(String str) {
+    // Split the string by spaces to separate words
+    List<String> words = str.trim().split(' ');
+
+    if (words.length >= 2) {
+      // If there are two or more words, get the first letter of each and capitalize
+      return words[0][0].toUpperCase() + words[1][0].toUpperCase();
+    } else if (words.isNotEmpty) {
+      // If there's only one word, get the first two letters and capitalize them
+      return str.substring(0, 2).toUpperCase();
+    }
+
+    return '';
   }
 
-  static DateTime endOfDay(DateTime dateTime) {
-    return DateTime(
-      dateTime.year,
-      dateTime.month,
-      dateTime.day,
-      23,
-      59,
-      59,
-      999,
-    );
+  // Generate avatar text color (darker)
+  static Color getAvatarColor() {
+    String timestamp =
+        DateFormat('yyyy-MM-dd HH:mm:ss.SSSSSS').format(DateTime.now());
+    final int hash = _hashCode(timestamp);
+    final hue = hash % 360;
+    return HSVColor.fromAHSV(1.0, hue.toDouble(), 0.7, 0.8).toColor();
+  }
+
+  // Generate avatar background fill color (lighter)
+  static Color getAvatarFillColor() {
+    String timestamp =
+        DateFormat('yyyy-MM-dd HH:mm:ss.SSSSSS').format(DateTime.now());
+    final int hash = _hashCode(timestamp + "_fill");
+    final hue = hash % 360;
+    return HSVColor.fromAHSV(1.0, hue.toDouble(), 0.3, 0.95).toColor();
+  }
+
+  // Simple hash function from string
+  static int _hashCode(String input) {
+    return input.codeUnits.fold(0, (prev, e) => prev + e * 37) & 0xFFFFFF;
   }
 }
