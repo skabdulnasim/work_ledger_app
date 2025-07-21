@@ -392,7 +392,7 @@ class SyncManager {
           existing
             ..amount = double.tryParse(cBillPay['amount']) ?? 0.0
             ..transactionAt =
-                Helper.getStringToDateTime(cBillPay['transaction_at'])
+                Helper.setStringToDateTime(cBillPay['transaction_at'])
             ..billNo = cBillPay['bill_no']
             ..paymentMode = cBillPay['payment_mode']
             ..transactionType = cBillPay['transaction_type']
@@ -431,7 +431,7 @@ class SyncManager {
           final newPayment = CompanyBillPayment(
             id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
             transactionAt:
-                Helper.getStringToDateTime(cBillPay['transaction_at']),
+                Helper.setStringToDateTime(cBillPay['transaction_at']),
             billNo: cBillPay['bill_no'],
             amount: double.tryParse(cBillPay['amount']) ?? 0.0,
             paymentMode: cBillPay['payment_mode'],

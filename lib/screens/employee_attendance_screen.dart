@@ -299,8 +299,9 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
                           return Row(
                             children: dates.map((date) {
                               final EmployeeAttendance? att =
-                                  DBEmployeeAttendance.findByEmployeeForDate(
-                                      emp.id!, widget.site.id!, date);
+                                  DBEmployeeAttendance
+                                      .findByEmployeeForDateOfSite(
+                                          emp.id!, widget.site.id!, date);
 
                               final controller = TextEditingController(
                                 text: att != null
@@ -325,8 +326,10 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
                                         EmployeeAttendance recentAttendance;
                                         EmployeeAttendance? existingAttendance =
                                             DBEmployeeAttendance
-                                                .findByEmployeeForDate(emp.id!,
-                                                    widget.site.id!, date);
+                                                .findByEmployeeForDateOfSite(
+                                                    emp.id!,
+                                                    widget.site.id!,
+                                                    date);
                                         try {
                                           final attBox =
                                               Hive.box<EmployeeAttendance>(
@@ -392,8 +395,10 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
                                         EmployeeAttendance recentAttendance;
                                         EmployeeAttendance? existingAttendance =
                                             DBEmployeeAttendance
-                                                .findByEmployeeForDate(emp.id!,
-                                                    widget.site.id!, date);
+                                                .findByEmployeeForDateOfSite(
+                                                    emp.id!,
+                                                    widget.site.id!,
+                                                    date);
                                         try {
                                           final attBox =
                                               Hive.box<EmployeeAttendance>(

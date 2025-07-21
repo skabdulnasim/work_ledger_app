@@ -62,13 +62,24 @@ class DBEmployeeAttendance {
     return attendances;
   }
 
-  static EmployeeAttendance? findByEmployeeForDate(
+  static EmployeeAttendance? findByEmployeeForDateOfSite(
       String employeeId, String siteId, DateTime date) {
     return Hive.box<EmployeeAttendance>(BOX_EMPLOYEE_ATTENDANCE)
         .values
         .firstWhereOrNull((e) =>
             e.employeeId == employeeId &&
             e.siteId == siteId &&
+            e.date.year == date.year &&
+            e.date.month == date.month &&
+            e.date.day == date.day);
+  }
+
+  static EmployeeAttendance? findByEmployeeForDate(
+      String employeeId, DateTime date) {
+    return Hive.box<EmployeeAttendance>(BOX_EMPLOYEE_ATTENDANCE)
+        .values
+        .firstWhereOrNull((e) =>
+            e.employeeId == employeeId &&
             e.date.year == date.year &&
             e.date.month == date.month &&
             e.date.day == date.day);

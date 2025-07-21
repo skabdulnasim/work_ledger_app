@@ -32,8 +32,8 @@ class Helper {
       if (isConnected && isOnline) {
         print("Hello Network");
 
-        final String token = await DBUserPrefs().getPreference(TOKEN);
-        if (token.isNotEmpty) {
+        final String? token = await DBUserPrefs().getPreference(TOKEN);
+        if (token != null && token.isNotEmpty) {
           print("SYNCING START...");
 
           await SyncManager().syncCompaniesFromServer();
@@ -96,6 +96,10 @@ class Helper {
     return DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime);
   }
 
+  static String getAMPMDateTime(DateTime dateTime) {
+    return DateFormat('dd-MM-yyyy hh:mm:ss a').format(dateTime);
+  }
+
   static String getJustDate(DateTime dateTime) {
     return DateFormat('yyyy-MM-dd').format(dateTime);
   }
@@ -104,15 +108,15 @@ class Helper {
     return DateFormat('HH:mm:ss').format(dateTime);
   }
 
-  static DateTime getDateTime(String dateTime) {
+  static DateTime setDateTime(String dateTime) {
     return DateFormat('yyyy-MM-dd HH:mm:ss').parse(dateTime);
   }
 
-  static DateTime getAMPMToDateTime(String formattedDateTimeString) {
+  static DateTime setAMPMToDateTime(String formattedDateTimeString) {
     return DateFormat('dd-MM-yyyy HH:mm a').parse(formattedDateTimeString);
   }
 
-  static DateTime getStringToDateTime(String formattedDateTimeString) {
+  static DateTime setStringToDateTime(String formattedDateTimeString) {
     return DateFormat(
       "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
     ).parse(formattedDateTimeString);
@@ -154,5 +158,57 @@ class Helper {
   // Simple hash function from string
   static int _hashCode(String input) {
     return input.codeUnits.fold(0, (prev, e) => prev + e * 37) & 0xFFFFFF;
+  }
+
+  static void showMessage(
+      BuildContext context, String message, bool isSuccess) {
+    OverlayEntry overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 40, // Adjust this value to position it below the screen top
+        right: 20, // Adjust this value to position it from the right edge
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isSuccess
+                    ? [Colors.green, const Color.fromARGB(255, 113, 242, 117)]
+                    : [Colors.red, const Color.fromARGB(255, 231, 105, 96)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(8.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isSuccess ? Icons.check_circle : Icons.warning,
+                  color: Colors.white,
+                ),
+                SizedBox(width: 8.0),
+                Text(
+                  message,
+                  style: TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(overlayEntry);
+
+    // Remove the overlay after a delay
+    Future.delayed(Duration(seconds: 3)).then((_) => overlayEntry.remove());
   }
 }

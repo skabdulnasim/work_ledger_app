@@ -7,6 +7,7 @@ import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/models/skill.dart';
 import 'package:work_ledger/services/sync_manager.dart';
 import 'package:work_ledger/widgets/employee_attendance_tab.dart';
+import 'package:work_ledger/widgets/employee_lobby_tab.dart';
 import 'package:work_ledger/widgets/employee_wallet_tab.dart';
 
 class EmployeeScreen extends StatefulWidget {
@@ -168,22 +169,9 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Name", style: labelStyle),
-              Text(widget.employee.name, style: valueStyle),
-              const SizedBox(height: 16),
-              Text("Address", style: labelStyle),
-              Text(widget.employee.address, style: valueStyle),
-              const SizedBox(height: 16),
-              Text("Skill", style: labelStyle),
-              Text(selectedSkill?.name ?? "-", style: valueStyle),
-              const SizedBox(height: 16),
-            ],
-          ),
           const TabBar(
             tabs: [
+              Tab(text: 'Lobby'),
               Tab(text: 'Attendance'),
               Tab(text: 'Wallet Tran.'),
             ],
@@ -193,6 +181,9 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
           Expanded(
             child: TabBarView(
               children: [
+                EmployeeLobbyTab(
+                  employee: widget.employee,
+                ),
                 EmployeeAttendanceTab(
                   employee: widget.employee,
                 ),

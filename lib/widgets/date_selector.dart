@@ -36,10 +36,11 @@ class DateSelector extends StatelessWidget {
     return GestureDetector(
       onTap: () => _pickDate(context),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
+          border: Border.all(width: 1, color: Colors.grey),
           borderRadius: BorderRadius.circular(6),
+          color: Color(0xFFF8F8F8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

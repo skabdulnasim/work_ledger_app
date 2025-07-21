@@ -428,7 +428,7 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  Helper.getFullDateTime(selectedTransactionAt),
+                                  Helper.getAMPMDateTime(selectedTransactionAt),
                                   style: TextStyle(fontSize: 14),
                                 ),
                               ),

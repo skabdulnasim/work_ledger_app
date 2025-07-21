@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:work_ledger/db_models/db_employee_wallet_transaction.dart';
 import 'package:work_ledger/models/employee.dart';
+import 'package:work_ledger/services/helper.dart';
 
 class EmployeeWalletTab extends StatefulWidget {
   final Employee employee;
@@ -49,12 +50,13 @@ class _EmployeeWalletTabState extends State<EmployeeWalletTab> {
                   itemBuilder: (context, index) {
                     final txn = txns[index];
                     return ListTile(
-                      title: Text(txn.amount.toStringAsFixed(2)),
-                      subtitle: Text(txn.remarks),
-                      trailing: Text(
-                        txn.transactionAt.toLocal().toString().split(' ').first,
-                        style: const TextStyle(fontSize: 12),
+                      title: Text(
+                        "${Helper.getAMPMDateTime(txn.transactionAt.toLocal())}",
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.bold),
                       ),
+                      subtitle: Text(txn.remarks),
+                      trailing: Text(txn.amount.toStringAsFixed(2)),
                     );
                   },
                 ),
@@ -65,7 +67,7 @@ class _EmployeeWalletTabState extends State<EmployeeWalletTab> {
 
   Widget _dateSelector(
       String label, DateTime? date, Function(DateTime) onSelect) {
-    return InkWell(
+    return GestureDetector(
       onTap: () async {
         final selected = await showDatePicker(
           context: context,
@@ -75,11 +77,41 @@ class _EmployeeWalletTabState extends State<EmployeeWalletTab> {
         );
         if (selected != null) onSelect(selected);
       },
-      child: InputDecorator(
-        decoration: InputDecoration(labelText: label),
-        child: Text(
-          date == null ? 'Select' : "${date.toLocal()}".split(' ').first,
-        ),
+      child: Stack(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.all(width: 1, color: Colors.grey),
+              borderRadius: BorderRadius.circular(6),
+              color: const Color(0xFFF8F8F8),
+            ),
+            width: double.infinity,
+            child: Text(
+              date == null
+                  ? '' // Placeholder will be shown above
+                  : "${date.toLocal()}".split(' ').first,
+              style: const TextStyle(fontSize: 14, color: Colors.black),
+            ),
+          ),
+          Positioned(
+            left: 8,
+            top: date == null ? 18 : 0,
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                fontSize: date == null ? 14 : 12,
+                color: date == null ? Colors.grey : Colors.black,
+              ),
+              child: Container(
+                color: const Color(0xFFF8F8F8),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(label),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
