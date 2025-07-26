@@ -61,7 +61,9 @@ class SkillListScreen extends StatelessWidget {
         tooltip: "Add Skill",
       ),
 
-      bottomNavigationBar: BottomNav(currentIndex: 2),
+      bottomNavigationBar: SafeArea(
+        child: BottomNav(currentIndex: 2),
+      ),
     );
   }
 }

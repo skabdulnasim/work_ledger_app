@@ -1,16 +1,14 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:work_ledger/db_models/db_employee_attendance.dart';
+import 'package:work_ledger/db_models/db_employee_salary_generate.dart';
 import 'package:work_ledger/db_models/db_site.dart';
 import 'package:work_ledger/models/employee.dart';
 import 'package:work_ledger/models/employee_attendance.dart';
 import 'package:work_ledger/models/site.dart';
 import 'package:work_ledger/services/helper.dart';
-import 'package:work_ledger/services/sync_manager.dart';
 import 'package:work_ledger/widgets/attendance_circle.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:work_ledger/widgets/three_state_switch.dart';
 import 'package:work_ledger/widgets/three_switch_state.dart';
 
 class EmployeeAttendanceTab extends StatefulWidget {
@@ -135,29 +133,38 @@ class _EmployeeAttendanceTabState extends State<EmployeeAttendanceTab> {
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             calendarFormat: CalendarFormat.month,
             onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-              });
+              bool isValidDate =
+                  DBEmployeeSalaryGenerate.isValidDate(selectedDay);
+              if (isValidDate) {
+                setState(() {
+                  _selectedDay = selectedDay;
+                  _focusedDay = focusedDay;
+                });
 
-              // IF RECENTLY UPDATED THEN MAKE A CHANCE TO SHOW IN CALENDER.
-              if (isRecentlyUpdated) {
-                isRecentlyUpdated = false;
-                return;
+                // IF RECENTLY UPDATED THEN MAKE A CHANCE TO SHOW IN CALENDER.
+                if (isRecentlyUpdated) {
+                  isRecentlyUpdated = false;
+                  return;
+                }
+
+                final existing = DBEmployeeAttendance.findByEmployeeForDate(
+                  widget.employee.id!,
+                  selectedDay,
+                );
+
+                _showAttendanceForm(
+                  context: context,
+                  date: selectedDay,
+                  emp: widget.employee,
+                  existingAttendance: existing,
+                );
+                isRecentlyUpdated = true;
+              } else {
+                Helper.showMessage(
+                    context,
+                    "Salary already generated for date: ${Helper.getTextDate(selectedDay)}.",
+                    false);
               }
-
-              final existing = DBEmployeeAttendance.findByEmployeeForDate(
-                widget.employee.id!,
-                selectedDay,
-              );
-
-              _showAttendanceForm(
-                context: context,
-                date: selectedDay,
-                emp: widget.employee,
-                existingAttendance: existing,
-              );
-              isRecentlyUpdated = true;
             },
             calendarStyle: CalendarStyle(
               markerSize: 40,
@@ -169,12 +176,28 @@ class _EmployeeAttendanceTabState extends State<EmployeeAttendanceTab> {
             ),
             calendarBuilders: CalendarBuilders(
               defaultBuilder: (context, day, focusedDay) {
-                return _buildAttendanceCell(day);
+                bool isValidDate = DBEmployeeSalaryGenerate.isValidDate(day);
+                return Container(
+                  margin: EdgeInsets.zero, // no gap
+                  padding: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    color: isValidDate ? null : Colors.blue.withOpacity(0.2),
+                    borderRadius: BorderRadius.zero,
+                  ),
+                  alignment: Alignment.center,
+                  child: _buildAttendanceCell(day),
+                );
               },
               todayBuilder: (context, day, focusedDay) {
                 return _buildAttendanceCell(day);
               },
             ),
+            onPageChanged: (pageDate) {
+              selectedMonth = pageDate.month;
+              selectedYear = pageDate.year;
+              _focusedDay = pageDate;
+              setState(() {});
+            },
           ),
         ),
       ],
@@ -214,166 +237,167 @@ class _EmployeeAttendanceTabState extends State<EmployeeAttendanceTab> {
           right: 16,
           top: 24,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center, // Vertical center
-              crossAxisAlignment:
-                  CrossAxisAlignment.center, // Horizontal center
-              children: [
-                Text(
-                  DateFormat('dd MMMM, yyyy').format(date),
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-                Text(
-                  DateFormat('EEEE').format(date),
-                  style: TextStyle(fontSize: 18),
-                ),
-              ],
-            ),
-            ThreeSwitchState(
-              labels: ['•', '½', '✓'],
-              initialIndex: selectedAttendanceState,
-              onStateChanged: (index) {
-                selectedAttendanceState = index;
-              },
-              axis: Axis.horizontal,
-            ),
-            SizedBox(height: 12),
-            DropdownButtonFormField<Site>(
-              value: selectedSite,
-              items: allSites.map((site) {
-                return DropdownMenuItem<Site>(
-                  value: site,
-                  child: Text(site.name),
-                );
-              }).toList(),
-              onChanged: (value) {
-                selectedSite = value;
-              },
-              decoration: InputDecoration(
-                labelText: 'Select Site',
-                border: OutlineInputBorder(), // ⬅️ This gives the outlined box
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-            ),
-            SizedBox(height: 12),
-            TextFormField(
-              controller: overtimeController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Overtime (hours)',
-                border: OutlineInputBorder(), // ⬅️ This gives the outlined box
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-            ),
-            SizedBox(height: 12),
-            TextFormField(
-              controller: remarksController,
-              maxLines: 2,
-              decoration: InputDecoration(
-                labelText: 'Remarks (Optional)',
-                border: OutlineInputBorder(), // ⬅️ This gives the outlined box
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-            ),
-            SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  icon: Icon(Icons.check),
-                  label: Text('Save'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        Colors.blue, // Set background color to blue
-                    foregroundColor:
-                        Colors.white, // Optional: sets icon/text color
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    minimumSize: Size(150, 48),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center, // Vertical center
+                crossAxisAlignment:
+                    CrossAxisAlignment.center, // Horizontal center
+                children: [
+                  Text(
+                    DateFormat('dd MMMM, yyyy').format(date),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
-                  onPressed: () async {
-                    if (selectedSite == null) {
-                      Helper.showMessage(
-                          context, "Please select a site.", false);
-                      return;
-                    }
-                    EmployeeAttendance att;
-                    final isAbsence = selectedAttendanceState == 0;
-                    final isHalfDay = selectedAttendanceState == 1;
-                    final isFullDay = selectedAttendanceState == 2;
-
-                    final double? overtime =
-                        double.tryParse(overtimeController.text);
-                    final String remarks = remarksController.text;
-
-                    if (existingAttendance != null) {
-                      att = existingAttendance
-                        ..siteId = selectedSite!.id!
-                        ..isAbsence = isAbsence
-                        ..isFullDay = isFullDay
-                        ..isHalfDay = isHalfDay
-                        ..overtimeCount = overtime ?? 0
-                        ..remarks = remarks
-                        ..isSynced = false;
-                    } else {
-                      att = EmployeeAttendance(
-                        id: "LOCAL-${DateTime.now().millisecondsSinceEpoch}",
-                        employeeId: emp.id!,
-                        siteId: selectedSite!.id!,
-                        date: date,
-                        isAbsence: isAbsence,
-                        isFullDay: isFullDay,
-                        isHalfDay: isHalfDay,
-                        overtimeCount: overtime ?? 0,
-                        remarks: remarks,
-                        isSynced: false,
-                      );
-                    }
-
-                    DBEmployeeAttendance.upsert(att);
-
-                    // ✅ Update attendanceMap manually
-                    setState(() {
-                      _attendanceMap[Helper.beginningOfDay(date)] = att;
-                    });
-
-                    // Optional: silent sync
-                    final conn = await Connectivity().checkConnectivity();
-                    if (conn != ConnectivityResult.none && !att.isSynced) {
-                      SyncManager().syncEmployeeAttendanceToServer(att);
-                    }
-
-                    Navigator.pop(context);
-                  },
-                ),
-                ElevatedButton.icon(
-                  icon: Icon(Icons.close),
-                  label: Text('Cancel'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        Colors.redAccent, // Set background color to blue
-                    foregroundColor:
-                        Colors.white, // Optional: sets icon/text color
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    minimumSize: Size(150, 48),
+                  Text(
+                    DateFormat('EEEE').format(date),
+                    style: TextStyle(fontSize: 18),
                   ),
-                  onPressed: () => Navigator.pop(context),
+                ],
+              ),
+              ThreeSwitchState(
+                labels: ['•', '½', '✓'],
+                initialIndex: selectedAttendanceState,
+                onStateChanged: (index) {
+                  selectedAttendanceState = index;
+                },
+                axis: Axis.horizontal,
+              ),
+              SizedBox(height: 12),
+              DropdownButtonFormField<Site>(
+                value: selectedSite,
+                items: allSites.map((site) {
+                  return DropdownMenuItem<Site>(
+                    value: site,
+                    child: Text(site.name),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  selectedSite = value;
+                },
+                decoration: InputDecoration(
+                  labelText: 'Select Site',
+                  border:
+                      OutlineInputBorder(), // ⬅️ This gives the outlined box
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-              ],
-            ),
-          ],
+              ),
+              SizedBox(height: 12),
+              TextFormField(
+                controller: overtimeController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'Overtime (hours)',
+                  border:
+                      OutlineInputBorder(), // ⬅️ This gives the outlined box
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+              SizedBox(height: 12),
+              TextFormField(
+                controller: remarksController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Remarks (Optional)',
+                  border:
+                      OutlineInputBorder(), // ⬅️ This gives the outlined box
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    icon: Icon(Icons.check),
+                    label: Text('Save'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          Colors.blue, // Set background color to blue
+                      foregroundColor:
+                          Colors.white, // Optional: sets icon/text color
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      minimumSize: Size(150, 48),
+                    ),
+                    onPressed: () async {
+                      if (selectedSite == null) {
+                        Helper.showMessage(
+                            context, "Please select a site.", false);
+                        return;
+                      }
+                      EmployeeAttendance att;
+                      final isAbsence = selectedAttendanceState == 0;
+                      final isHalfDay = selectedAttendanceState == 1;
+                      final isFullDay = selectedAttendanceState == 2;
+
+                      final double? overtime =
+                          double.tryParse(overtimeController.text);
+                      final String remarks = remarksController.text;
+
+                      if (existingAttendance != null) {
+                        att = existingAttendance
+                          ..siteId = selectedSite!.id!
+                          ..isAbsence = isAbsence
+                          ..isFullDay = isFullDay
+                          ..isHalfDay = isHalfDay
+                          ..overtimeCount = overtime ?? 0
+                          ..remarks = remarks
+                          ..isSynced = false;
+                      } else {
+                        att = EmployeeAttendance(
+                          id: "LOCAL-${DateTime.now().millisecondsSinceEpoch}",
+                          employeeId: emp.id!,
+                          siteId: selectedSite!.id!,
+                          date: date,
+                          isAbsence: isAbsence,
+                          isFullDay: isFullDay,
+                          isHalfDay: isHalfDay,
+                          overtimeCount: overtime ?? 0,
+                          remarks: remarks,
+                          isSynced: false,
+                        );
+                      }
+
+                      DBEmployeeAttendance.upsert(att);
+
+                      // ✅ Update attendanceMap manually
+                      setState(() {
+                        _attendanceMap[Helper.beginningOfDay(date)] = att;
+                      });
+
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ElevatedButton.icon(
+                    icon: Icon(Icons.close),
+                    label: Text('Cancel'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          Colors.redAccent, // Set background color to blue
+                      foregroundColor:
+                          Colors.white, // Optional: sets icon/text color
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      minimumSize: Size(150, 48),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

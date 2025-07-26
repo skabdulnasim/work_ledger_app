@@ -7,13 +7,17 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:intl/intl.dart';
 import 'package:work_ledger/db_constants.dart';
+import 'package:work_ledger/db_models/db_attach_file.dart';
 import 'package:work_ledger/db_models/db_company_bill_payment.dart';
+import 'package:work_ledger/models/attach_file.dart';
 import 'package:work_ledger/models/company_bill_payment.dart';
 import 'package:work_ledger/models/site.dart';
-import 'package:work_ledger/screens/employee_attendance_screen.dart';
 import 'package:work_ledger/services/helper.dart';
 import 'package:work_ledger/services/secure_api_service.dart';
+import 'package:work_ledger/services/unsecure_api_service.dart';
 import 'package:work_ledger/widgets/top_bar.dart';
+import 'package:path/path.dart' as p;
+import 'package:open_filex/open_filex.dart';
 
 class BillPaymentListScreen extends StatefulWidget {
   final Site site;
@@ -32,7 +36,7 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
   String selectedTransactionMode = "CASH";
   final TextEditingController _billNoController = TextEditingController();
   final TextEditingController _remarksController = TextEditingController();
-  final List<String> _attachments = [];
+  final List<String> _attachmentIds = [];
 
   final ScrollController _scrollController = ScrollController();
 
@@ -46,7 +50,7 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
       transactionType: "SENT",
       remarks: _remarksController.text,
       siteId: widget.site.id!,
-      attachmentPaths: [..._attachments],
+      attachFileIds: [..._attachmentIds],
     );
 
     if (newPayment.validate().isEmpty) {
@@ -56,7 +60,7 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
       _remarksController.clear();
       selectedTransactionAt = DateTime.now();
       selectedTransactionMode = "CASH";
-      _attachments.clear();
+      _attachmentIds.clear();
       setState(() {});
       await Future.delayed(Duration(milliseconds: 200));
       _scrollToBottom();
@@ -67,7 +71,6 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
             await SecureApiService.createCompanyBillPayment(newPayment);
 
         if (response != null && response['id'] != null) {
-          print(response.toString());
           newPayment
             ..serverId = response['id'].toString()
             ..isSynced = true;
@@ -97,7 +100,7 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
       transactionType: "RECEIVED",
       remarks: _remarksController.text,
       siteId: widget.site.id!,
-      attachmentPaths: [..._attachments],
+      attachFileIds: [..._attachmentIds],
     );
     if (newPayment.validate().isEmpty) {
       await DBCompanyBillPayment.upsertCompanyBillPayment(newPayment);
@@ -106,7 +109,7 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
       _remarksController.clear();
       selectedTransactionAt = DateTime.now();
       selectedTransactionMode = "CASH";
-      _attachments.clear();
+      _attachmentIds.clear();
       setState(() {});
       await Future.delayed(Duration(milliseconds: 200));
       _scrollToBottom();
@@ -193,10 +196,26 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
         );
 
         if (cropped != null) {
-          _attachments.add(cropped.path);
+          String file_name = p.basename(file.path);
+
+          AttachFile f = AttachFile(
+              id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
+              filename: file_name,
+              fileType: 'image',
+              localPath: cropped.path);
+          DBAttachFile.upsert(f);
+          _attachmentIds.add(f.id);
         }
       } else {
-        _attachments.add(file.path);
+        String file_name = p.basename(file.path);
+
+        AttachFile f = AttachFile(
+            id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
+            filename: file_name,
+            fileType: 'document',
+            localPath: file.path);
+        DBAttachFile.upsert(f);
+        _attachmentIds.add(f.id);
       }
 
       setState(() {});
@@ -251,9 +270,14 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
     for (final id in _selectedMessageIds) {
       final payment = box.get(id);
       if (payment != null) {
-        for (final path in payment.attachmentPaths) {
-          final file = File(path);
-          if (await file.exists()) await file.delete();
+        for (final attachFileId in payment.attachFileIds) {
+          AttachFile? path = DBAttachFile.find(attachFileId);
+          if (path != null) {
+            if (path.localPath != null) {
+              final file = File(path.localPath!);
+              if (await file.exists()) await file.delete();
+            }
+          }
         }
         await box.delete(id);
       }
@@ -377,252 +401,317 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
             ),
 
             // Input form fixed at bottom
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 235, 235, 235),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    offset: Offset(0, -2),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
+            SafeArea(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Invoice No. and Date Picker
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _billNoController,
-                          keyboardType: TextInputType.text,
-                          decoration: InputDecoration(
-                            hintText: "INVOICE NO.",
-                            fillColor: Color(0xFFF8F8F8),
-                            filled: true,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(Icons.attach_file),
-                              onPressed: pickAttachment,
-                              tooltip: "Attach file",
-                            ),
-                          ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(255, 235, 235, 235),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          offset: Offset(0, -2),
+                          blurRadius: 4,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            border: Border.all(width: 1, color: Colors.grey),
-                            borderRadius: BorderRadius.circular(6),
-                            color: Color(0xFFF8F8F8),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  Helper.getAMPMDateTime(selectedTransactionAt),
-                                  style: TextStyle(fontSize: 14),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Invoice No. and Date Picker
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _billNoController,
+                                keyboardType: TextInputType.text,
+                                decoration: InputDecoration(
+                                  hintText: "INVOICE NO.",
+                                  fillColor: Color(0xFFF8F8F8),
+                                  filled: true,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(Icons.attach_file),
+                                    onPressed: pickAttachment,
+                                    tooltip: "Attach file",
+                                  ),
                                 ),
                               ),
-                              IconButton(
-                                onPressed: () => _selectDateTime(context),
-                                icon: Icon(Icons.calendar_month_outlined),
-                                tooltip: 'Select Date & Time',
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  border:
+                                      Border.all(width: 1, color: Colors.grey),
+                                  borderRadius: BorderRadius.circular(6),
+                                  color: Color(0xFFF8F8F8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        Helper.getAMPMDateTime(
+                                            selectedTransactionAt),
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () => _selectDateTime(context),
+                                      icon: Icon(Icons.calendar_month_outlined),
+                                      tooltip: 'Select Date & Time',
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
 
-                  const SizedBox(height: 8),
+                        const SizedBox(height: 8),
 
-                  // Transaction Mode and Remarks
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(width: 1, color: Colors.grey),
-                            borderRadius: BorderRadius.circular(6),
-                            color: Color(0xFFF8F8F8),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: selectedTransactionMode,
-                            underline: SizedBox(),
-                            items: const [
-                              DropdownMenuItem(
-                                  value: "CASH", child: Text("CASH")),
-                              DropdownMenuItem(
-                                  value: "ONLINE", child: Text("ONLINE")),
-                              DropdownMenuItem(
-                                  value: "CARD", child: Text("CARD")),
-                              DropdownMenuItem(
-                                  value: "BANK", child: Text("BANK")),
-                              DropdownMenuItem(
-                                  value: "CHEQUE", child: Text("CHEQUE")),
-                            ],
-                            onChanged: (v) =>
-                                setState(() => selectedTransactionMode = v!),
-                          ),
+                        // Transaction Mode and Remarks
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border:
+                                      Border.all(width: 1, color: Colors.grey),
+                                  borderRadius: BorderRadius.circular(6),
+                                  color: Color(0xFFF8F8F8),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: selectedTransactionMode,
+                                  underline: SizedBox(),
+                                  items: const [
+                                    DropdownMenuItem(
+                                        value: "CASH", child: Text("CASH")),
+                                    DropdownMenuItem(
+                                        value: "ONLINE", child: Text("ONLINE")),
+                                    DropdownMenuItem(
+                                        value: "CARD", child: Text("CARD")),
+                                    DropdownMenuItem(
+                                        value: "BANK", child: Text("BANK")),
+                                    DropdownMenuItem(
+                                        value: "CHEQUE", child: Text("CHEQUE")),
+                                  ],
+                                  onChanged: (v) => setState(
+                                      () => selectedTransactionMode = v!),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: _remarksController,
+                                decoration: InputDecoration(
+                                  hintText: "Remarks...",
+                                  fillColor: Color(0xFFF8F8F8),
+                                  filled: true,
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(6)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _remarksController,
+
+                        const SizedBox(height: 8),
+
+                        // Amount Input
+                        TextField(
+                          controller: _amountController,
+                          keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            hintText: "Remarks...",
-                            fillColor: Color(0xFFF8F8F8),
+                            hintText: "Enter amount...",
+                            hintStyle: TextStyle(color: Colors.grey[600]),
                             filled: true,
+                            fillColor: Color(0xFFF8F8F8),
+                            contentPadding: EdgeInsets.symmetric(
+                                vertical: 16, horizontal: 12),
                             border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(6)),
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade400),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide:
+                                  BorderSide(color: Colors.blue, width: 2),
+                            ),
+                            prefixIcon: Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 12, right: 8),
+                              child: Text(
+                                "₹",
+                                style: TextStyle(
+                                    fontSize: 24, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            prefixIconConstraints:
+                                BoxConstraints(minWidth: 0, minHeight: 0),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
 
-                  const SizedBox(height: 8),
+                        const SizedBox(height: 8),
 
-                  // Amount Input
-                  TextField(
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      hintText: "Enter amount...",
-                      hintStyle: TextStyle(color: Colors.grey[600]),
-                      filled: true,
-                      fillColor: Color(0xFFF8F8F8),
-                      contentPadding:
-                          EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey.shade400),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.blue, width: 2),
-                      ),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.only(left: 12, right: 8),
-                        child: Text(
-                          "₹",
-                          style: TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.bold),
+                        // SEND and RECEIVE buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 45,
+                                child: ElevatedButton(
+                                  onPressed: _sendPayment,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green[100],
+                                    foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.zero,
+                                    ),
+                                  ),
+                                  child: Text("SEND"),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: SizedBox(
+                                height: 45,
+                                child: ElevatedButton(
+                                  onPressed: _receivePayment,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue[100],
+                                    foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.zero,
+                                    ),
+                                  ),
+                                  child: Text("RECEIVE"),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      prefixIconConstraints:
-                          BoxConstraints(minWidth: 0, minHeight: 0),
+                      ],
                     ),
                   ),
-
-                  const SizedBox(height: 8),
-
-                  // SEND and RECEIVE buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 45,
-                          child: ElevatedButton(
-                            onPressed: _sendPayment,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green[100],
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.zero,
+                  if (_attachmentIds.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      height: 100,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _attachmentIds.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (_, index) {
+                          final attFileId = _attachmentIds[index];
+                          final path = DBAttachFile.find(attFileId);
+                          return Stack(
+                            children: [
+                              if (path!.fileType == "image")
+                                if (path.localPath != null)
+                                  Image.file(
+                                    File(path.localPath!),
+                                    width: 80,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  )
+                                else
+                                  Row(
+                                    children: [
+                                      Image.network(
+                                        path.previewUrl!,
+                                        width: 80,
+                                        height: 100,
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.download),
+                                        onPressed: () async {
+                                          final filePath =
+                                              await UnsecureApiService()
+                                                  .downloadFile(
+                                                      path.downloadUrl!,
+                                                      path.filename);
+                                          setState(() {
+                                            path.localPath = filePath;
+                                            path.save();
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                              if (path.fileType == "document")
+                                if (path.localPath != null)
+                                  Container(
+                                    width: 80,
+                                    height: 100,
+                                    color: Colors.grey[200],
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: const [
+                                        Icon(Icons.picture_as_pdf,
+                                            color: Colors.red),
+                                        Text('PDF',
+                                            style: TextStyle(fontSize: 12)),
+                                      ],
+                                    ),
+                                  )
+                                else
+                                  Row(
+                                    children: [
+                                      Icon(Icons.file_present),
+                                      Text(path.filename),
+                                      IconButton(
+                                        icon: Icon(Icons.download),
+                                        onPressed: () async {
+                                          final filePath =
+                                              await UnsecureApiService()
+                                                  .downloadFile(
+                                                      path.downloadUrl!,
+                                                      path.filename);
+                                          setState(() {
+                                            path.localPath = filePath;
+                                            path.save();
+                                          });
+                                        },
+                                      )
+                                    ],
+                                  ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(
+                                        () => _attachmentIds.removeAt(index));
+                                  },
+                                  child: Container(
+                                    color: Colors.black45,
+                                    child: const Icon(Icons.close,
+                                        color: Colors.white, size: 16),
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Text("SEND"),
-                          ),
-                        ),
+                            ],
+                          );
+                        },
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: SizedBox(
-                          height: 45,
-                          child: ElevatedButton(
-                            onPressed: _receivePayment,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[100],
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.zero,
-                              ),
-                            ),
-                            child: Text("RECEIVE"),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
                 ],
               ),
             ),
-
-            if (_attachments.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(8),
-                height: 100,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _attachments.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, index) {
-                    final path = _attachments[index];
-                    return Stack(
-                      children: [
-                        if (path.toLowerCase().endsWith('.pdf'))
-                          Container(
-                            width: 80,
-                            height: 100,
-                            color: Colors.grey[200],
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.picture_as_pdf, color: Colors.red),
-                                Text('PDF', style: TextStyle(fontSize: 12)),
-                              ],
-                            ),
-                          )
-                        else
-                          Image.file(
-                            File(path),
-                            width: 80,
-                            height: 100,
-                            fit: BoxFit.cover,
-                          ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() => _attachments.removeAt(index));
-                            },
-                            child: Container(
-                              color: Colors.black45,
-                              child: const Icon(Icons.close,
-                                  color: Colors.white, size: 16),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
           ],
         ),
       ),
@@ -669,49 +758,99 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
               ),
 
             // Attachments
-            if (payment.attachmentPaths.isNotEmpty)
+            if (payment.attachFileIds.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: payment.attachmentPaths.map((path) {
-                    if (path.toLowerCase().endsWith('.pdf')) {
-                      return GestureDetector(
-                        onTap: () {
-                          // Open PDF viewer or external
-                        },
-                        child: Container(
-                          width: 80,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey),
-                            borderRadius: BorderRadius.circular(6),
-                            color: Colors.white,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.picture_as_pdf,
-                                  size: 32, color: Colors.red),
-                              SizedBox(height: 4),
-                              Text("PDF", style: TextStyle(fontSize: 12)),
+                  children: payment.attachFileIds.map((attId) {
+                    final att = DBAttachFile.find(attId);
+                    if (att != null) {
+                      if (att.fileType.startsWith('image')) {
+                        if (att.localPath != null) {
+                          return GestureDetector(
+                            onTap: () async {
+                              Helper.showMessage(context,
+                                  "IMAGE PREVIEW COMMING SOON...", true);
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: Image.file(
+                                File(att.localPath!),
+                                fit: BoxFit.fitWidth,
+                                width: double.infinity,
+                              ),
+                            ),
+                          );
+                        } else {
+                          return GestureDetector(
+                            onTap: () async {
+                              final filePath = await UnsecureApiService()
+                                  .downloadFile(att.downloadUrl!, att.filename);
+                              setState(() {
+                                att.localPath = filePath;
+                                print(att.toString());
+                                DBAttachFile.upsert(att);
+                              });
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: Image.network(
+                                att.previewUrl!,
+                                fit: BoxFit.fitWidth,
+                                width: double.infinity,
+                              ),
+                            ),
+                          );
+                        }
+                      } else {
+                        if (att.localPath != null) {
+                          return Row(
+                            children: [
+                              Icon(Icons.file_present),
+                              Expanded(child: Text(att.filename)),
+                              IconButton(
+                                icon: Icon(Icons.open_in_new),
+                                onPressed: () async {
+                                  Helper.showMessage(context,
+                                      "FILE PREVIEW COMMING SOON...", true);
+                                  //await OpenFilex.open(att.localPath!);
+
+                                  //   final file = File(
+                                  //       '/data/user/0/com.softwebfashion.work_ledger/app_flutter/file-sample_150kb.pdf');
+                                  //   OpenFilex.open(file.path);
+                                },
+                              ),
                             ],
-                          ),
-                        ),
-                      );
+                          );
+                        } else {
+                          return Row(
+                            children: [
+                              Icon(Icons.file_present),
+                              Expanded(
+                                child: Text(att.filename),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.download),
+                                onPressed: () async {
+                                  final filePath = await UnsecureApiService()
+                                      .downloadFile(
+                                          att.downloadUrl!, att.filename);
+                                  setState(() {
+                                    att.localPath = filePath;
+                                    print(att.toString());
+                                    DBAttachFile.upsert(att);
+                                  });
+                                },
+                              )
+                            ],
+                          );
+                        }
+                      }
                     } else {
-                      return GestureDetector(
-                        onTap: () {
-                          // Show full image viewer
-                        },
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.file(
-                            File(path),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+                      return Row(
+                        children: [],
                       );
                     }
                   }).toList(),

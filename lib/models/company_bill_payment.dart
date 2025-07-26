@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:hive/hive.dart';
 import 'package:work_ledger/db_constants.dart';
 
@@ -7,7 +6,7 @@ part 'company_bill_payment.g.dart';
 @HiveType(typeId: COMPANY_BILL_PAYMENT_BOX_TYPE)
 class CompanyBillPayment extends HiveObject {
   @HiveField(0)
-  String id; // UUID or timestamp
+  String id;
 
   @HiveField(1)
   String? serverId;
@@ -37,7 +36,7 @@ class CompanyBillPayment extends HiveObject {
   bool isSynced;
 
   @HiveField(10)
-  List<String> attachmentPaths;
+  List<String> attachFileIds;
 
   CompanyBillPayment({
     required this.id,
@@ -50,7 +49,7 @@ class CompanyBillPayment extends HiveObject {
     required this.siteId,
     required this.transactionAt,
     this.isSynced = false,
-    this.attachmentPaths = const [],
+    this.attachFileIds = const [],
   });
 
   factory CompanyBillPayment.fromJson(Map<String, dynamic> json) {
@@ -78,7 +77,7 @@ class CompanyBillPayment extends HiveObject {
         'remarks': remarks,
         'site_id': siteId,
         'transaction_at': transactionAt.toIso8601String(),
-        'attachments': attachmentPaths,
+        'attachFileIds': attachFileIds,
       };
 
   List<String> validate() {

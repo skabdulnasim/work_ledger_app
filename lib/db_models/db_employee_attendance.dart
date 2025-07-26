@@ -1,8 +1,10 @@
 import 'package:collection/collection.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive/hive.dart';
 import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/models/employee_attendance.dart';
 import 'package:work_ledger/services/helper.dart';
+import 'package:work_ledger/services/sync_manager.dart';
 
 class DBEmployeeAttendance {
   static Future<void> openBox() async {
@@ -94,9 +96,20 @@ class DBEmployeeAttendance {
   }
 
   /// Add or update company by ID
-  static Future<void> upsert(EmployeeAttendance attendance) async {
+  static Future<void> upsert(EmployeeAttendance attendance,
+      {bool sync = true}) async {
     final box = Hive.box<EmployeeAttendance>(BOX_EMPLOYEE_ATTENDANCE);
+
     await box.put(attendance.id, attendance);
+
+    // Start silent sync in background
+    final conn = await Connectivity().checkConnectivity();
+    if (conn != ConnectivityResult.none &&
+        !attendance.isSynced &&
+        sync == true) {
+      print("======= SYNCING ======>>>${attendance.toJson()}");
+      SyncManager().syncEmployeeAttendanceToServer(attendance);
+    }
   }
 
   static List<EmployeeAttendance> getUnsynced() {

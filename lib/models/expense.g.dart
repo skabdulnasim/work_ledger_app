@@ -1,61 +1,58 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'company_bill_payment.dart';
+part of 'expense.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class CompanyBillPaymentAdapter extends TypeAdapter<CompanyBillPayment> {
+class ExpenseAdapter extends TypeAdapter<Expense> {
   @override
-  final int typeId = 6;
+  final int typeId = 13;
 
   @override
-  CompanyBillPayment read(BinaryReader reader) {
+  Expense read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return CompanyBillPayment(
+    return Expense(
       id: fields[0] as String,
+      isSynced: fields[2] as bool,
       serverId: fields[1] as String?,
-      billNo: fields[2] as String,
-      amount: fields[3] as double,
-      paymentMode: fields[4] as String,
-      transactionType: fields[5] as String,
-      remarks: fields[6] as String,
-      siteId: fields[7] as String,
-      transactionAt: fields[8] as DateTime,
-      isSynced: fields[9] == null ? false : fields[9] as bool,
-      attachFileIds: (fields[10] as List).cast<String>(),
+      expenseAt: fields[3] as DateTime,
+      siteId: fields[4] as String,
+      expenseById: fields[5] as String,
+      expenseToId: fields[6] as String?,
+      amount: fields[7] as double,
+      remarks: fields[8] as String,
+      attachFileIds: (fields[9] as List).cast<String>(),
     );
   }
 
   @override
-  void write(BinaryWriter writer, CompanyBillPayment obj) {
+  void write(BinaryWriter writer, Expense obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.serverId)
       ..writeByte(2)
-      ..write(obj.billNo)
-      ..writeByte(3)
-      ..write(obj.amount)
-      ..writeByte(4)
-      ..write(obj.paymentMode)
-      ..writeByte(5)
-      ..write(obj.transactionType)
-      ..writeByte(6)
-      ..write(obj.remarks)
-      ..writeByte(7)
-      ..write(obj.siteId)
-      ..writeByte(8)
-      ..write(obj.transactionAt)
-      ..writeByte(9)
       ..write(obj.isSynced)
-      ..writeByte(10)
+      ..writeByte(3)
+      ..write(obj.expenseAt)
+      ..writeByte(4)
+      ..write(obj.siteId)
+      ..writeByte(5)
+      ..write(obj.expenseById)
+      ..writeByte(6)
+      ..write(obj.expenseToId)
+      ..writeByte(7)
+      ..write(obj.amount)
+      ..writeByte(8)
+      ..write(obj.remarks)
+      ..writeByte(9)
       ..write(obj.attachFileIds);
   }
 
@@ -65,7 +62,7 @@ class CompanyBillPaymentAdapter extends TypeAdapter<CompanyBillPayment> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CompanyBillPaymentAdapter &&
+      other is ExpenseAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

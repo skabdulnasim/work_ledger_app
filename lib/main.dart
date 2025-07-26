@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:work_ledger/db_constants.dart';
+import 'package:work_ledger/models/attach_file.dart';
 import 'package:work_ledger/models/company_bill_payment.dart';
 import 'package:work_ledger/models/employee.dart';
 import 'package:work_ledger/models/employee_attendance.dart';
@@ -26,7 +29,18 @@ import 'package:work_ledger/services/helper.dart';
 import 'models/company.dart';
 import 'screens/login_screen.dart';
 
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
+
 void main() async {
+  HttpOverrides.global = MyHttpOverrides();
+
   WidgetsFlutterBinding.ensureInitialized();
   final dir = await getApplicationDocumentsDirectory();
   await Hive.initFlutter(dir.path);
@@ -39,6 +53,7 @@ void main() async {
   Hive.registerAdapter(EmployeeAttendanceAdapter());
   Hive.registerAdapter(EmployeeSalaryGenerateAdapter());
   Hive.registerAdapter(EmployeeWalletTransactionAdapter());
+  Hive.registerAdapter(AttachFileAdapter());
 
   await Hive.openBox<Company>(BOX_COMPANY);
   await Hive.openBox<Skill>(BOX_SKILL);
@@ -49,6 +64,7 @@ void main() async {
   await Hive.openBox<EmployeeSalaryGenerate>(BOX_EMPLOYEE_SALARY_GENERATE);
   await Hive.openBox<EmployeeWalletTransaction>(
       BOX_EMPLOYEE_WALLET_TRANSACTION);
+  await Hive.openBox<AttachFile>(BOX_ATTACH_FILE);
 
   runApp(MyApp());
   Helper.listenForNetworkChanges();

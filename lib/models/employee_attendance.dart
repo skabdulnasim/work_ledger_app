@@ -68,7 +68,8 @@ class EmployeeAttendance extends HiveObject {
       );
 
   Map<String, dynamic> toJson() => {
-        'id': serverId,
+        'localId': id,
+        'serverId': serverId,
         'employee_id': employeeId,
         'site_id': siteId,
         'date': date.toIso8601String(),

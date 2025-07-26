@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:work_ledger/db_constants.dart';
+import 'package:work_ledger/db_models/db_attach_file.dart';
 import 'package:work_ledger/db_models/db_site.dart';
 import 'package:work_ledger/db_models/db_user_prefs.dart';
+import 'package:work_ledger/models/attach_file.dart';
 import 'package:work_ledger/models/company.dart';
 import 'package:work_ledger/models/company_bill_payment.dart';
 import 'package:work_ledger/models/site.dart';
@@ -337,13 +339,16 @@ class SecureApiService {
         request.fields['company_bill_payment[site_id]'] = site.serverId!;
 
         // Attach files
-        for (final filePath in payment.attachmentPaths) {
-          final file = File(filePath);
-          if (await file.exists()) {
-            request.files.add(await http.MultipartFile.fromPath(
-              'attachments[]',
-              filePath,
-            ));
+        for (final attachFileId in payment.attachFileIds) {
+          AttachFile? filePath = DBAttachFile.find(attachFileId);
+          if (filePath != null) {
+            final file = File(filePath.localPath!);
+            if (await file.exists()) {
+              request.files.add(await http.MultipartFile.fromPath(
+                'attachments[]',
+                filePath.localPath!,
+              ));
+            }
           }
         }
 

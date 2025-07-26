@@ -119,7 +119,9 @@ class SiteListScreen extends StatelessWidget {
         child: const Icon(Icons.add),
         tooltip: "Add Site",
       ),
-      bottomNavigationBar: BottomNav(currentIndex: 1),
+      bottomNavigationBar: SafeArea(
+        child: BottomNav(currentIndex: 1),
+      ),
     );
   }
 }

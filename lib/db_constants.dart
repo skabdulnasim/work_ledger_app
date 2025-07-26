@@ -7,6 +7,10 @@ const COMPANY_BILL_PAYMENT_BOX_TYPE = 6;
 const EMPLOYEE_ATTENDANCE_BOX_TYPE = 7;
 const EMPLOYEE_SALARY_GRNERATE_BOX_TYPE = 8;
 const EMPLOYEE_WALLET_TRANSACTION_BOX_TYPE = 9;
+const ATTACH_FILE_BOX_TYPE = 10;
+const EMPLOYEE_HOLD_TRANSACTION_BOX_TYPE = 11;
+const HOLD_AMOUNT_BOX_TYPE = 12;
+const EXPENSE_BOX_TYPE = 13;
 
 const TOKEN = 'token';
 const COMPANY_SYNCED_AT = 'company_synced_at';
@@ -17,6 +21,8 @@ const EMPLOYEE_ROLE_SYNCED_AT = 'employee_role_synced_at';
 const COMPANY_BILL_PAY_SYNCED_AT = 'company_bill_payment_synced_at';
 const EMPLOYEE_ATTENDANCE_SYNCED_AT = 'employee_attendance_synced_at';
 const EMPLOYEE_SALARY_GRNERATE_SYNCED_AT = 'employee_salary_generate_synced_at';
+const EXPENSE_SYNCED_AT = 'expense_synced_at';
+const HOLD_AMOUNT_SYNCED_AT = 'hold_amount_synced_at';
 
 const BOX_USER_PREFS = "user_prefs";
 const BOX_COMPANY = "companies";
@@ -27,3 +33,7 @@ const BOX_COMPANY_BILL_PAYMENT = 'company_bill_payments';
 const BOX_EMPLOYEE_ATTENDANCE = 'employee_attendances';
 const BOX_EMPLOYEE_SALARY_GENERATE = 'employee_salary_generates';
 const BOX_EMPLOYEE_WALLET_TRANSACTION = 'employee_wallet_transactions';
+const BOX_ATTACH_FILE = "attach_files";
+const BOX_EMPLOYEE_HOLD_TRANSACTION = 'employee_hold_transactions';
+const BOX_EXPENSE = 'expenses';
+const BOX_HOLD_AMOUNT = 'hold_amounts';

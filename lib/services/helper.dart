@@ -108,6 +108,10 @@ class Helper {
     return DateFormat('HH:mm:ss').format(dateTime);
   }
 
+  static String getTextDate(DateTime dateTime) {
+    return DateFormat('d MMMM, yyyy').format(dateTime);
+  }
+
   static DateTime setDateTime(String dateTime) {
     return DateFormat('yyyy-MM-dd HH:mm:ss').parse(dateTime);
   }

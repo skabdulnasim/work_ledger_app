@@ -138,7 +138,9 @@ class EmployeeListScreen extends StatelessWidget {
         child: const Icon(Icons.add),
         tooltip: "Add Employee",
       ),
-      bottomNavigationBar: BottomNav(currentIndex: 0),
+      bottomNavigationBar: SafeArea(
+        child: BottomNav(currentIndex: 0),
+      ),
     );
   }
 }

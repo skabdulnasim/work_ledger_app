@@ -1,11 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:work_ledger/services/api_constant.dart';
 
 class UnsecureApiService {
   static Map<String, String> get headers => {
-    'Content-Type': 'application/json',
-  };
+        'Content-Type': 'application/json',
+      };
 
   // ----------------------------
   // OTP REQUEST
@@ -51,5 +53,13 @@ class UnsecureApiService {
       print('Update Company Error: $e');
       return null;
     }
+  }
+
+  Future<String> downloadFile(String url, String filename) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/$filename');
+    final response = await http.get(Uri.parse(url));
+    await file.writeAsBytes(response.bodyBytes);
+    return file.path;
   }
 }

@@ -1,15 +1,7 @@
 import 'package:hive/hive.dart';
 import 'package:work_ledger/db_constants.dart';
-import 'package:work_ledger/db_models/db_employee.dart';
-import 'package:work_ledger/db_models/db_employee_attendance.dart';
-import 'package:work_ledger/db_models/db_site.dart';
-import 'package:work_ledger/models/employee.dart';
-import 'package:work_ledger/models/employee_attendance.dart';
 import 'package:work_ledger/models/employee_salary_generate.dart';
-import 'package:work_ledger/models/employee_wallet_transaction.dart';
-import 'package:work_ledger/models/site.dart';
-import 'package:work_ledger/models/site_payment_role.dart';
-import 'package:work_ledger/models/skill.dart';
+import 'package:work_ledger/services/helper.dart';
 
 class DBEmployeeSalaryGenerate {
   static Future<void> openBox() async {
@@ -42,16 +34,33 @@ class DBEmployeeSalaryGenerate {
     await box.put(salary.id, salary);
   }
 
-  static Future<void> markAsSynced(
-      EmployeeSalaryGenerate salary, String serverId) async {
-    salary
-      ..serverId = serverId
-      ..isSynced = true;
-    await salary.save();
-  }
-
   static Future<void> clear() async {
     await Hive.box<EmployeeSalaryGenerate>(BOX_EMPLOYEE_SALARY_GENERATE)
         .clear();
+  }
+
+  static bool isValidDate(DateTime dated) {
+    final box = Hive.box<EmployeeSalaryGenerate>(BOX_EMPLOYEE_SALARY_GENERATE);
+
+    final values = box.values
+        .where(
+          (data) =>
+              (Helper.beginningOfDay(dated)
+                      .isAtSameMomentAs(Helper.beginningOfDay(data.fromDate)) ||
+                  Helper.beginningOfDay(dated)
+                      .isAtSameMomentAs(Helper.beginningOfDay(data.toDate))) ||
+              ((Helper.beginningOfDay(dated)
+                          .isAfter(Helper.beginningOfDay(data.fromDate)) &&
+                      Helper.beginningOfDay(dated)
+                          .isBefore(Helper.beginningOfDay(data.toDate))) ||
+                  Helper.beginningOfDay(dated)
+                      .isBefore(Helper.beginningOfDay(data.toDate))),
+        )
+        .toList();
+    if (values.isNotEmpty) {
+      return false;
+    } else {
+      return true;
+    }
   }
 }

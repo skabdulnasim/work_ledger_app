@@ -2,8 +2,10 @@ import 'dart:io';
 
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:work_ledger/db_constants.dart';
+import 'package:work_ledger/db_models/db_attach_file.dart';
 import 'package:work_ledger/db_models/db_company.dart';
 import 'package:work_ledger/db_models/db_company_bill_payment.dart';
 import 'package:work_ledger/db_models/db_employee.dart';
@@ -13,6 +15,7 @@ import 'package:work_ledger/db_models/db_employee_wallet_transaction.dart';
 import 'package:work_ledger/db_models/db_site.dart';
 import 'package:work_ledger/db_models/db_skill.dart';
 import 'package:work_ledger/db_models/db_user_prefs.dart';
+import 'package:work_ledger/models/attach_file.dart';
 import 'package:work_ledger/models/company.dart';
 import 'package:work_ledger/models/company_bill_payment.dart';
 import 'package:work_ledger/models/employee.dart';
@@ -368,22 +371,27 @@ class SyncManager {
           final siteServerId = cBillPay['site_id'].toString();
           final localSite = DBSite.byServerId(siteServerId);
 
-          final List<String> attachmentsDownloadedPaths = [];
+          final List<String> downloadedAttachFileIds = [];
           final sAttachments = cBillPay['attachments'] as List<dynamic>;
           for (final attachment in sAttachments) {
             final filename = attachment['filename'];
             final relativeUrl = attachment['url'];
+            final thmbUrl = attachment['thumb_url'];
+            final fileType = attachment['type'];
             final fullUrl = "$BASE_PATH$relativeUrl";
+            final thumbUrl = "$BASE_PATH$thmbUrl";
 
             try {
-              final response = await http.get(Uri.parse(fullUrl));
-              if (response.statusCode == 200) {
-                final dir = await getApplicationDocumentsDirectory();
-                final localFile = File('${dir.path}/$filename');
-
-                await localFile.writeAsBytes(response.bodyBytes);
-                attachmentsDownloadedPaths.add(localFile.path);
-              }
+              AttachFile f = AttachFile(
+                id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
+                filename: filename,
+                fileType: fileType,
+                downloadUrl: fullUrl,
+                previewUrl: fileType == 'image' ? thumbUrl : null,
+                serverId: attachment["id"].toString(),
+              );
+              DBAttachFile.upsert(f);
+              downloadedAttachFileIds.add(f.id);
             } catch (e) {
               print("Error downloading $filename: $e");
             }
@@ -399,7 +407,7 @@ class SyncManager {
             ..remarks = cBillPay['remarks'] ?? ''
             ..siteId = localSite!.id!
             ..isSynced = true
-            ..attachmentPaths = [...attachmentsDownloadedPaths];
+            ..attachFileIds = [...downloadedAttachFileIds];
 
           await existing.save();
         } else {
@@ -407,22 +415,27 @@ class SyncManager {
           final siteServerId = cBillPay['site_id'].toString();
           final localSite = DBSite.byServerId(siteServerId);
 
-          final List<String> attachmentsDownloadedPaths = [];
+          final List<String> downloadedAttachFileIds = [];
           final sAttachments = cBillPay['attachments'] as List<dynamic>;
           for (final attachment in sAttachments) {
             final filename = attachment['filename'];
+            final fileType = attachment['type'];
             final relativeUrl = attachment['url'];
+            final thmUrl = attachment['thumb_url'];
+            final thumbUrl = "$BASE_PATH$thmUrl";
             final fullUrl = "$BASE_PATH$relativeUrl";
 
             try {
-              final response = await http.get(Uri.parse(fullUrl));
-              if (response.statusCode == 200) {
-                final dir = await getApplicationDocumentsDirectory();
-                final localFile = File('${dir.path}/$filename');
-
-                await localFile.writeAsBytes(response.bodyBytes);
-                attachmentsDownloadedPaths.add(localFile.path);
-              }
+              AttachFile f = AttachFile(
+                id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
+                filename: filename,
+                fileType: fileType,
+                downloadUrl: fullUrl,
+                previewUrl: fileType == 'image' ? thumbUrl : null,
+                serverId: attachment["id"].toString(),
+              );
+              DBAttachFile.upsert(f);
+              downloadedAttachFileIds.add(f.id);
             } catch (e) {
               print("Error downloading $filename: $e");
             }
@@ -438,7 +451,7 @@ class SyncManager {
             transactionType: cBillPay['transaction_type'],
             remarks: cBillPay['remarks'] ?? '',
             siteId: localSite!.id!,
-            attachmentPaths: [...attachmentsDownloadedPaths],
+            attachFileIds: [...downloadedAttachFileIds],
             serverId: cBillPay['is'].toString(),
             isSynced: true,
           );
@@ -578,7 +591,7 @@ class SyncManager {
             ..remarks = attendance['remarks']
             ..isSynced = true;
 
-          await existingAttendance.save();
+          DBEmployeeAttendance.upsert(existingAttendance, sync: false);
         } else {
           // Create new
           final employeeServerId = attendance['employee_id'].toString();
@@ -600,7 +613,7 @@ class SyncManager {
             isSynced: true,
           );
 
-          await box.add(newAttendance);
+          DBEmployeeAttendance.upsert(newAttendance, sync: false);
         }
       }
       await DBUserPrefs().savePreference(
@@ -638,7 +651,7 @@ class SyncManager {
           "remarks": attendance.remarks,
         },
       };
-
+      print("=============>>>");
       print(payload);
 
       if (attendance.serverId != null) {
@@ -649,7 +662,7 @@ class SyncManager {
           // Update company with server ID and mark as synced
           attendance.isSynced = true;
 
-          await attendance.save(); // Save updated info to Hive
+          await DBEmployeeAttendance.upsert(attendance);
         }
       } else {
         final response =
@@ -661,7 +674,7 @@ class SyncManager {
             ..serverId = response['id'].toString()
             ..isSynced = true;
 
-          await attendance.save(); // Save updated info to Hive
+          await DBEmployeeAttendance.upsert(attendance);
         }
       }
     } catch (e) {
@@ -689,7 +702,7 @@ class SyncManager {
           ..serverId = response['id'].toString()
           ..isSynced = true;
 
-        await salary.save(); // Save updated info to Hive
+        await salary.save();
       }
     } catch (e) {
       print("Sync failed: $e");

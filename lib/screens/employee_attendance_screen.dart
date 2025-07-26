@@ -1,16 +1,14 @@
 import 'dart:async';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
-import 'package:work_ledger/db_constants.dart';
+import 'package:work_ledger/db_models/db_employee_salary_generate.dart';
 import 'package:work_ledger/models/employee.dart';
 import 'package:work_ledger/models/employee_attendance.dart';
 import 'package:work_ledger/db_models/db_employee.dart';
 import 'package:work_ledger/db_models/db_employee_attendance.dart';
 import 'package:work_ledger/models/site.dart';
-import 'package:work_ledger/services/sync_manager.dart';
+import 'package:work_ledger/services/helper.dart';
 import 'package:work_ledger/widgets/three_state_switch.dart';
 
 class EmployeeAttendanceScreen extends StatefulWidget {
@@ -184,299 +182,285 @@ class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Employee Attendance")),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) {
-                if (_debounce?.isActive ?? false) _debounce!.cancel();
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-                _debounce = Timer(const Duration(milliseconds: 300), () {
-                  setState(() {
-                    employees = [];
-                    loadedEmployeeCount = 0;
-                    _searchText = value.trim().toLowerCase();
-                    loadMoreEmployees();
+                  _debounce = Timer(const Duration(milliseconds: 300), () {
+                    setState(() {
+                      employees = [];
+                      loadedEmployeeCount = 0;
+                      _searchText = value.trim().toLowerCase();
+                      loadMoreEmployees();
+                    });
                   });
-                });
-              },
-              decoration: InputDecoration(
-                hintText: "Search by name or mobile...",
-                prefixIcon: Icon(Icons.search),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                },
+                decoration: InputDecoration(
+                  hintText: "Search by name or mobile...",
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
               ),
             ),
-          ),
-          // Top header row
-          Row(
-            children: [
-              buildCell(
-                  Text(
-                    "EMPLOYEE",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                  color: Colors.grey.shade300),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: fixedHeaderHorizontalController,
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: dates.map((date) {
-                      bool isToday = DateUtils.isSameDay(date, DateTime.now());
-                      return buildCell(
-                        Column(
-                          mainAxisAlignment:
-                              MainAxisAlignment.center, // Vertical center
-                          crossAxisAlignment:
-                              CrossAxisAlignment.center, // Horizontal center
-                          children: [
-                            Text(
-                              DateFormat('dd MMM').format(date),
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 18),
-                            ),
-                            Text(
-                              DateFormat('EEE').format(date),
-                              style: TextStyle(fontSize: 18),
-                            ),
-                          ],
-                        ),
-                        color: isToday
-                            ? Colors.grey.shade200
-                            : Colors.grey.shade300,
-                      );
-                    }).toList(),
-                  ),
-                ),
-              )
-            ],
-          ),
-
-          // Main scrollable grid
-          Expanded(
-            child: Row(
+            // Top header row
+            Row(
               children: [
-                // Fixed left column
-                SingleChildScrollView(
-                  controller: fixedColumnVerticalController,
-                  child: Column(
-                    children: employees.map((emp) {
-                      return buildCell(
-                        Column(
-                          mainAxisAlignment:
-                              MainAxisAlignment.center, // Vertical center
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start, // Horizontal center
-                          children: [
-                            Text(
-                              emp.name,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(emp.mobileNo, style: TextStyle(fontSize: 16)),
-                          ],
-                        ),
-                        color: Colors.grey.shade100,
-                      );
-                    }).toList(),
-                  ),
-                ),
-
-                // Scrollable grid
+                buildCell(
+                    Text(
+                      "EMPLOYEE",
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    color: Colors.grey.shade300),
                 Expanded(
                   child: SingleChildScrollView(
-                    controller: verticalController,
-                    child: SingleChildScrollView(
-                      controller: horizontalController,
-                      scrollDirection: Axis.horizontal,
-                      child: Column(
-                        children: employees.map((emp) {
-                          return Row(
-                            children: dates.map((date) {
-                              final EmployeeAttendance? att =
-                                  DBEmployeeAttendance
-                                      .findByEmployeeForDateOfSite(
-                                          emp.id!, widget.site.id!, date);
-
-                              final controller = TextEditingController(
-                                text: att != null
-                                    ? (att.overtimeCount > 0
-                                        ? att.overtimeCount.toStringAsFixed(0)
-                                        : '')
-                                    : '',
-                              );
-
-                              bool isToday =
-                                  DateUtils.isSameDay(date, DateTime.now());
-
-                              return buildCell(
-                                Column(
-                                  children: [
-                                    ThreeStateSwitch(
-                                      labels: ['•', '½', '✓'],
-                                      selectedIndex: att != null
-                                          ? getAttendanceState(att)
-                                          : 0,
-                                      onStateChanged: (i) async {
-                                        EmployeeAttendance recentAttendance;
-                                        EmployeeAttendance? existingAttendance =
-                                            DBEmployeeAttendance
-                                                .findByEmployeeForDateOfSite(
-                                                    emp.id!,
-                                                    widget.site.id!,
-                                                    date);
-                                        try {
-                                          final attBox =
-                                              Hive.box<EmployeeAttendance>(
-                                                  BOX_EMPLOYEE_ATTENDANCE);
-                                          if (existingAttendance != null) {
-                                            EmployeeAttendance updatedAtt =
-                                                existingAttendance
-                                                  ..isAbsence = (i == 0)
-                                                  ..isFullDay = (i == 2)
-                                                  ..isHalfDay = (i == 1)
-                                                  ..isSynced = false;
-                                            updatedAtt.save();
-                                            recentAttendance = updatedAtt;
-                                          } else {
-                                            final newAtt = EmployeeAttendance(
-                                              id: "LOCAL-${DateTime.now().millisecondsSinceEpoch.toString()}", // or UUID
-                                              employeeId: emp.id!,
-                                              siteId: widget.site.id!,
-                                              date: date,
-                                              isAbsence: (i == 0),
-                                              isFullDay: (i == 2),
-                                              isHalfDay: (i == 1),
-                                              isSynced: false,
-                                            );
-                                            attBox.add(newAtt);
-                                            recentAttendance = newAtt;
-                                          }
-
-                                          setState(() {});
-
-                                          // Start silent sync in background
-                                          final conn = await Connectivity()
-                                              .checkConnectivity();
-                                          if (conn != ConnectivityResult.none &&
-                                              !recentAttendance.isSynced) {
-                                            print(
-                                                "=============>>>${recentAttendance.toJson()}");
-                                            SyncManager()
-                                                .syncEmployeeAttendanceToServer(
-                                                    recentAttendance);
-                                          }
-                                        } catch (e) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(SnackBar(
-                                              content: Text(e.toString())));
-                                        }
-                                      },
-                                      axis: Axis.horizontal,
-                                    ),
-                                    SizedBox(height: 10),
-                                    TextField(
-                                      controller: controller,
-                                      maxLength: 3,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 22),
-                                      keyboardType:
-                                          TextInputType.numberWithOptions(
-                                              decimal: true),
-                                      onChanged: (val) async {
-                                        double overtimeCount =
-                                            double.tryParse(val) ?? 0;
-                                        EmployeeAttendance recentAttendance;
-                                        EmployeeAttendance? existingAttendance =
-                                            DBEmployeeAttendance
-                                                .findByEmployeeForDateOfSite(
-                                                    emp.id!,
-                                                    widget.site.id!,
-                                                    date);
-                                        try {
-                                          final attBox =
-                                              Hive.box<EmployeeAttendance>(
-                                                  BOX_EMPLOYEE_ATTENDANCE);
-                                          if (existingAttendance != null) {
-                                            EmployeeAttendance updatedAtt =
-                                                existingAttendance
-                                                  ..overtimeCount =
-                                                      overtimeCount
-                                                  ..isSynced = false;
-                                            updatedAtt.save();
-                                            recentAttendance = updatedAtt;
-                                          } else {
-                                            final newAtt = EmployeeAttendance(
-                                              id: "LOCAL-${DateTime.now().millisecondsSinceEpoch.toString()}", // or UUID
-                                              employeeId: emp.id!,
-                                              siteId: widget.site.id!,
-                                              date: date,
-                                              overtimeCount: overtimeCount,
-                                              isSynced: false,
-                                            );
-                                            attBox.add(newAtt);
-                                            recentAttendance = newAtt;
-                                          }
-
-                                          // Start silent sync in background
-                                          final conn = await Connectivity()
-                                              .checkConnectivity();
-                                          if (conn != ConnectivityResult.none &&
-                                              !recentAttendance.isSynced) {
-                                            SyncManager()
-                                                .syncEmployeeAttendanceToServer(
-                                                    recentAttendance);
-                                          }
-                                        } catch (e) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(SnackBar(
-                                              content: Text(e.toString())));
-                                        }
-                                      },
-                                      decoration: InputDecoration(
-                                        hintText: "00",
-                                        counterText: '',
-                                        contentPadding:
-                                            EdgeInsets.symmetric(horizontal: 6),
-                                        border: OutlineInputBorder(),
-                                        prefixIcon: Icon(Icons.alarm),
-                                        suffixIcon: Container(
-                                          padding:
-                                              EdgeInsets.symmetric(vertical: 8),
-                                          child: Text(
-                                            "hr",
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontSize: 22,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                color: isToday
-                                    ? Colors.grey.shade50
-                                    : Colors.white,
-                              );
-                            }).toList(),
-                          );
-                        }).toList(),
-                      ),
+                    controller: fixedHeaderHorizontalController,
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: dates.map((date) {
+                        bool isToday =
+                            DateUtils.isSameDay(date, DateTime.now());
+                        return buildCell(
+                          Column(
+                            mainAxisAlignment:
+                                MainAxisAlignment.center, // Vertical center
+                            crossAxisAlignment:
+                                CrossAxisAlignment.center, // Horizontal center
+                            children: [
+                              Text(
+                                DateFormat('dd MMM').format(date),
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 18),
+                              ),
+                              Text(
+                                DateFormat('EEE').format(date),
+                                style: TextStyle(fontSize: 18),
+                              ),
+                            ],
+                          ),
+                          color: isToday
+                              ? Colors.grey.shade200
+                              : Colors.grey.shade300,
+                        );
+                      }).toList(),
                     ),
                   ),
                 )
               ],
             ),
-          )
-        ],
+
+            // Main scrollable grid
+            Expanded(
+              child: Row(
+                children: [
+                  // Fixed left column
+                  SingleChildScrollView(
+                    controller: fixedColumnVerticalController,
+                    child: Column(
+                      children: employees.map((emp) {
+                        return buildCell(
+                          Column(
+                            mainAxisAlignment:
+                                MainAxisAlignment.center, // Vertical center
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start, // Horizontal center
+                            children: [
+                              Text(
+                                emp.name,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(emp.mobileNo,
+                                  style: TextStyle(fontSize: 16)),
+                            ],
+                          ),
+                          color: Colors.grey.shade100,
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                  // Scrollable grid
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: verticalController,
+                      child: SingleChildScrollView(
+                        controller: horizontalController,
+                        scrollDirection: Axis.horizontal,
+                        child: Column(
+                          children: employees.map((emp) {
+                            return Row(
+                              children: dates.map((date) {
+                                final EmployeeAttendance? att =
+                                    DBEmployeeAttendance
+                                        .findByEmployeeForDateOfSite(
+                                            emp.id!, widget.site.id!, date);
+
+                                final controller = TextEditingController(
+                                  text: att != null
+                                      ? (att.overtimeCount > 0
+                                          ? att.overtimeCount.toStringAsFixed(0)
+                                          : '')
+                                      : '',
+                                );
+
+                                bool isToday =
+                                    DateUtils.isSameDay(date, DateTime.now());
+                                bool isValidDate =
+                                    DBEmployeeSalaryGenerate.isValidDate(date);
+                                return buildCell(
+                                  Column(
+                                    children: [
+                                      ThreeStateSwitch(
+                                        labels: ['•', '½', '✓'],
+                                        selectedIndex: att != null
+                                            ? getAttendanceState(att)
+                                            : 0,
+                                        onStateChanged: (i) async {
+                                          if (isValidDate) {
+                                            EmployeeAttendance?
+                                                existingAttendance =
+                                                DBEmployeeAttendance
+                                                    .findByEmployeeForDate(
+                                                        emp.id!, date);
+                                            try {
+                                              if (existingAttendance != null) {
+                                                EmployeeAttendance updatedAtt =
+                                                    existingAttendance
+                                                      ..siteId = widget.site.id!
+                                                      ..isAbsence = (i == 0)
+                                                      ..isFullDay = (i == 2)
+                                                      ..isHalfDay = (i == 1)
+                                                      ..isSynced = false;
+                                                DBEmployeeAttendance.upsert(
+                                                    updatedAtt);
+                                              } else {
+                                                final newAtt =
+                                                    EmployeeAttendance(
+                                                  id: "LOCAL-${DateTime.now().millisecondsSinceEpoch.toString()}", // or UUID
+                                                  employeeId: emp.id!,
+                                                  siteId: widget.site.id!,
+                                                  date: date,
+                                                  isAbsence: (i == 0),
+                                                  isFullDay: (i == 2),
+                                                  isHalfDay: (i == 1),
+                                                  isSynced: false,
+                                                );
+                                                DBEmployeeAttendance.upsert(
+                                                    newAtt);
+                                              }
+
+                                              setState(() {});
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(SnackBar(
+                                                  content: Text(e.toString())));
+                                            }
+                                          } else {
+                                            Helper.showMessage(
+                                                context,
+                                                "Salary already generated!",
+                                                false);
+                                          }
+                                        },
+                                        axis: Axis.horizontal,
+                                      ),
+                                      SizedBox(height: 10),
+                                      TextField(
+                                        readOnly: !isValidDate,
+                                        controller: controller,
+                                        maxLength: 3,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(fontSize: 22),
+                                        keyboardType:
+                                            TextInputType.numberWithOptions(
+                                                decimal: true),
+                                        onChanged: (val) async {
+                                          double overtimeCount =
+                                              double.tryParse(val) ?? 0;
+                                          EmployeeAttendance?
+                                              existingAttendance =
+                                              DBEmployeeAttendance
+                                                  .findByEmployeeForDate(
+                                                      emp.id!, date);
+                                          try {
+                                            if (existingAttendance != null) {
+                                              EmployeeAttendance updatedAtt =
+                                                  existingAttendance
+                                                    ..overtimeCount =
+                                                        overtimeCount
+                                                    ..isSynced = false;
+                                              DBEmployeeAttendance.upsert(
+                                                  updatedAtt);
+                                            } else {
+                                              final newAtt = EmployeeAttendance(
+                                                id: "LOCAL-${DateTime.now().millisecondsSinceEpoch.toString()}", // or UUID
+                                                employeeId: emp.id!,
+                                                siteId: widget.site.id!,
+                                                date: date,
+                                                overtimeCount: overtimeCount,
+                                                isSynced: false,
+                                              );
+                                              DBEmployeeAttendance.upsert(
+                                                  newAtt);
+                                            }
+                                          } catch (e) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(SnackBar(
+                                                content: Text(e.toString())));
+                                          }
+                                        },
+                                        decoration: InputDecoration(
+                                          hintText: "00",
+                                          counterText: '',
+                                          contentPadding: EdgeInsets.symmetric(
+                                              horizontal: 6),
+                                          border: OutlineInputBorder(),
+                                          prefixIcon: Icon(Icons.alarm),
+                                          suffixIcon: Container(
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 8),
+                                            child: Text(
+                                              "hr",
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 22,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  color: isToday
+                                      ? Colors.grey.shade50
+                                      : isValidDate
+                                          ? null
+                                          : Colors.blue.withOpacity(0.2),
+                                );
+                              }).toList(),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
