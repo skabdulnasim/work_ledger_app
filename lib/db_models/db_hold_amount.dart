@@ -54,4 +54,8 @@ class DBHoldAmount {
       return null;
     }
   }
+
+  static List<HoldAmount> getUnSynced() {
+    return getAllHoldAmounts().where((f) => !f.isSynced).toList();
+  }
 }

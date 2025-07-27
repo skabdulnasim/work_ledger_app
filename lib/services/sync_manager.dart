@@ -10,8 +10,11 @@ import 'package:work_ledger/db_models/db_company.dart';
 import 'package:work_ledger/db_models/db_company_bill_payment.dart';
 import 'package:work_ledger/db_models/db_employee.dart';
 import 'package:work_ledger/db_models/db_employee_attendance.dart';
+import 'package:work_ledger/db_models/db_employee_hold_transaction.dart';
 import 'package:work_ledger/db_models/db_employee_salary_generate.dart';
 import 'package:work_ledger/db_models/db_employee_wallet_transaction.dart';
+import 'package:work_ledger/db_models/db_expense.dart';
+import 'package:work_ledger/db_models/db_hold_amount.dart';
 import 'package:work_ledger/db_models/db_site.dart';
 import 'package:work_ledger/db_models/db_skill.dart';
 import 'package:work_ledger/db_models/db_user_prefs.dart';
@@ -20,8 +23,11 @@ import 'package:work_ledger/models/company.dart';
 import 'package:work_ledger/models/company_bill_payment.dart';
 import 'package:work_ledger/models/employee.dart';
 import 'package:work_ledger/models/employee_attendance.dart';
+import 'package:work_ledger/models/employee_hold_transaction.dart';
 import 'package:work_ledger/models/employee_salary_generate.dart';
 import 'package:work_ledger/models/employee_wallet_transaction.dart';
+import 'package:work_ledger/models/expense.dart';
+import 'package:work_ledger/models/hold_amount.dart';
 import 'package:work_ledger/models/site.dart';
 import 'package:work_ledger/models/site_payment_role.dart';
 import 'package:work_ledger/models/skill.dart';
@@ -452,7 +458,7 @@ class SyncManager {
             remarks: cBillPay['remarks'] ?? '',
             siteId: localSite!.id!,
             attachFileIds: [...downloadedAttachFileIds],
-            serverId: cBillPay['is'].toString(),
+            serverId: cBillPay['id'].toString(),
             isSynced: true,
           );
 
@@ -789,6 +795,235 @@ class SyncManager {
           Helper.getCurrentDateTime(),
         );
       }
+    }
+  }
+
+  Future<void> syncPendingHoldAmounts() async {
+    final unsyncedHolds = DBHoldAmount.getUnSynced();
+    for (final hold in unsyncedHolds) {
+      await syncHoldAmountToServer(hold);
+    }
+  }
+
+  Future<void> syncHoldAmountToServer(HoldAmount hold) async {
+    final response = await SecureApiService.createHoldAmount(hold);
+
+    if (response != null && response['id'] != null) {
+      hold
+        ..serverId = response['id'].toString()
+        ..isSynced = true;
+
+      DBHoldAmount.upsertHoldAmount(hold);
+    }
+  }
+
+  Future<void> syncHoldAmountFromServer() async {
+    try {
+      final holdAmountFromServer =
+          await SecureApiService.fetchHoldAmountsFromServer();
+      for (final cHoldAmount in holdAmountFromServer) {
+        final existing = DBHoldAmount.byServerId(cHoldAmount['id'].toString());
+
+        if (existing == null) {
+          // Create new
+          final siteServerId = cHoldAmount['site_id'].toString();
+          final localSite = DBSite.byServerId(siteServerId);
+          final employeeServerId = cHoldAmount['employee_id'].toString();
+          final localEmployee = DBEmployee.byServerId(employeeServerId);
+
+          final List<String> downloadedAttachFileIds = [];
+          final sAttachments = cHoldAmount['attachments'] as List<dynamic>;
+          for (final attachment in sAttachments) {
+            final filename = attachment['filename'];
+            final fileType = attachment['type'];
+            final relativeUrl = attachment['url'];
+            final thmUrl = attachment['thumb_url'];
+            final thumbUrl = "$BASE_PATH$thmUrl";
+            final fullUrl = "$BASE_PATH$relativeUrl";
+
+            try {
+              AttachFile f = AttachFile(
+                id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
+                filename: filename,
+                fileType: fileType,
+                downloadUrl: fullUrl,
+                previewUrl: fileType == 'image' ? thumbUrl : null,
+                serverId: attachment["id"].toString(),
+              );
+              DBAttachFile.upsert(f);
+              downloadedAttachFileIds.add(f.id);
+            } catch (e) {
+              print("Error downloading $filename: $e");
+            }
+          }
+
+          final newHold = HoldAmount(
+            id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
+            addedAt: Helper.setStringToDateTime(cHoldAmount['added_at']),
+            amount: double.tryParse(cHoldAmount['amount']) ?? 0.0,
+            employeeId: localEmployee!.id!,
+            remarks: cHoldAmount['remarks'] ?? '',
+            siteId: localSite!.id!,
+            attachFileIds: [...downloadedAttachFileIds],
+            serverId: cHoldAmount['id'].toString(),
+            isSynced: true,
+          );
+
+          DBHoldAmount.upsertHoldAmount(newHold);
+          localEmployee.holdAmount +=
+              (double.tryParse(cHoldAmount['amount']) ?? 0.0);
+          await localEmployee.save();
+
+          // Create wallet transaction
+          final transaction = EmployeeHoldTransaction(
+            id: "LOCAL-${DateTime.now().millisecondsSinceEpoch}",
+            employeeId: localEmployee.id!,
+            amount: (double.tryParse(cHoldAmount['amount']) ?? 0.0),
+            transactionAt: Helper.setStringToDateTime(cHoldAmount['added_at']),
+            transactionType: 'credit',
+            transactionableId: newHold.id,
+            transactionableType: 'HoldAmount',
+            remarks: "Amount ${cHoldAmount['amount']} added to expense.",
+            balanceAmount: localEmployee.holdAmount,
+          );
+          await DBEmployeeHoldTransaction.upsert(transaction);
+        }
+      }
+      await DBUserPrefs().savePreference(
+        HOLD_AMOUNT_SYNCED_AT,
+        Helper.getCurrentDateTime(),
+      );
+    } catch (e) {
+      print("Failed to sync hold amount: $e");
+    }
+  }
+
+  Future<void> syncPendingExpenses() async {
+    final unsyncedExpenses = DBExpense.getUnSynced();
+    for (final expense in unsyncedExpenses) {
+      await syncExpenseToServer(expense);
+    }
+  }
+
+  Future<void> syncExpenseToServer(Expense expense) async {
+    final response = await SecureApiService.createExpense(expense);
+
+    if (response != null && response['id'] != null) {
+      expense
+        ..serverId = response['id'].toString()
+        ..isSynced = true;
+
+      DBExpense.upsertExpense(expense);
+    }
+  }
+
+  Future<void> syncExpensesFromServer() async {
+    try {
+      final expensesFromServer =
+          await SecureApiService.fetchExpensesFromServer();
+      for (final cExpense in expensesFromServer) {
+        final existing = DBHoldAmount.byServerId(cExpense['id'].toString());
+
+        if (existing == null) {
+          // Create new
+          final siteServerId = cExpense['site_id'].toString();
+          final localSite = DBSite.byServerId(siteServerId);
+          final expenseByServerId = cExpense['expense_by_id'].toString();
+          final localExpenseBy = DBEmployee.byServerId(expenseByServerId);
+          Employee? localExpenseTo;
+          if (cExpense['expense_by_id'] != null) {
+            final expenseToServerId = cExpense['expense_to_id'].toString();
+            localExpenseTo = DBEmployee.byServerId(expenseToServerId);
+          }
+
+          final List<String> downloadedAttachFileIds = [];
+          final sAttachments = cExpense['attachments'] as List<dynamic>;
+          for (final attachment in sAttachments) {
+            final filename = attachment['filename'];
+            final fileType = attachment['type'];
+            final relativeUrl = attachment['url'];
+            final thmUrl = attachment['thumb_url'];
+            final thumbUrl = "$BASE_PATH$thmUrl";
+            final fullUrl = "$BASE_PATH$relativeUrl";
+
+            try {
+              AttachFile f = AttachFile(
+                id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
+                filename: filename,
+                fileType: fileType,
+                downloadUrl: fullUrl,
+                previewUrl: fileType == 'image' ? thumbUrl : null,
+                serverId: attachment["id"].toString(),
+              );
+              DBAttachFile.upsert(f);
+              downloadedAttachFileIds.add(f.id);
+            } catch (e) {
+              print("Error downloading $filename: $e");
+            }
+          }
+
+          final newExpense = Expense(
+            id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
+            expenseAt: Helper.setStringToDateTime(cExpense['expense_at']),
+            amount: double.tryParse(cExpense['amount']) ?? 0.0,
+            expenseById: localExpenseBy!.id!,
+            remarks: cExpense['remarks'] ?? '',
+            siteId: localSite!.id!,
+            attachFileIds: [...downloadedAttachFileIds],
+            serverId: cExpense['id'].toString(),
+            isSynced: true,
+          );
+
+          if (localExpenseTo != null) {
+            newExpense.expenseToId = localExpenseTo.id;
+          }
+
+          DBExpense.upsertExpense(newExpense);
+          localExpenseBy.holdAmount -=
+              (double.tryParse(cExpense['amount']) ?? 0.0);
+          await localExpenseBy.save();
+
+          // Create wallet transaction
+          final transaction = EmployeeHoldTransaction(
+            id: "LOCAL-${DateTime.now().millisecondsSinceEpoch}",
+            employeeId: localExpenseBy.id!,
+            amount: (double.tryParse(cExpense['amount']) ?? 0.0),
+            transactionAt: Helper.setStringToDateTime(cExpense['expense_at']),
+            transactionType: 'debit',
+            transactionableId: newExpense.id,
+            transactionableType: 'Expense',
+            remarks: "Expense: ${cExpense['remarks'] ?? ''}.",
+            balanceAmount: localExpenseBy.holdAmount,
+          );
+          await DBEmployeeHoldTransaction.upsert(transaction);
+
+          if (localExpenseTo != null) {
+            localExpenseTo.walletBalance -=
+                (double.tryParse(cExpense['amount']) ?? 0.0);
+            await localExpenseTo.save();
+
+            // Create wallet transaction
+            final transaction = EmployeeWalletTransaction(
+              id: "LOCAL-${DateTime.now().millisecondsSinceEpoch}",
+              employeeId: localExpenseTo.id!,
+              amount: (double.tryParse(cExpense['amount']) ?? 0.0),
+              transactionAt: Helper.setStringToDateTime(cExpense['expense_at']),
+              transactionType: 'debit',
+              transactionableId: newExpense.id,
+              transactionableType: 'Expense',
+              remarks: "PAID: ${cExpense['remarks'] ?? ''}.",
+              createdAt: DateTime.now(),
+            );
+            await DBEmployeeWalletTransaction.upsert(transaction);
+          }
+        }
+      }
+      await DBUserPrefs().savePreference(
+        EXPENSE_SYNCED_AT,
+        Helper.getCurrentDateTime(),
+      );
+    } catch (e) {
+      print("Failed to sync expense: $e");
     }
   }
 }

@@ -38,6 +38,10 @@ class _SplashScreenState extends State<SplashScreen> {
         () => SyncManager().syncPendingEmployeeAttendances(),
         () => SyncManager().syncEmployeeSalaryGeneratesFromServer(),
         () => SyncManager().syncPendingEmployeeSalaryGenerates(),
+        () => SyncManager().syncHoldAmountFromServer(),
+        () => SyncManager().syncPendingHoldAmounts(),
+        () => SyncManager().syncExpensesFromServer(),
+        () => SyncManager().syncPendingExpenses(),
       ]);
 
       await _runSyncSteps();

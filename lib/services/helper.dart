@@ -57,6 +57,12 @@ class Helper {
           await SyncManager().syncEmployeeSalaryGeneratesFromServer();
           await SyncManager().syncPendingEmployeeSalaryGenerates();
 
+          await SyncManager().syncHoldAmountFromServer();
+          await SyncManager().syncPendingHoldAmounts();
+
+          await SyncManager().syncExpensesFromServer();
+          await SyncManager().syncPendingExpenses();
+
           print("SYNCING END...");
         }
       }

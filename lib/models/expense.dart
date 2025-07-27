@@ -62,4 +62,30 @@ class Expense extends HiveObject {
       'attachFileIds': attachFileIds,
     };
   }
+
+  List<String> validate() {
+    List<String> errors = [];
+
+    if (id.trim().isEmpty) {
+      errors.add("ID is required.");
+    }
+
+    if (amount <= 0) {
+      errors.add("Expense amount must be greater than 0.00");
+    }
+
+    if (expenseById.trim().isEmpty) {
+      errors.add("Must required, who generate expense.");
+    }
+
+    if (siteId.trim().isEmpty) {
+      errors.add("Site must be required.");
+    }
+
+    if (expenseAt.isAfter(DateTime.now())) {
+      errors.add("Expense at must me now or before.");
+    }
+
+    return errors;
+  }
 }

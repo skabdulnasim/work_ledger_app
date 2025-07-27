@@ -57,4 +57,30 @@ class HoldAmount extends HiveObject {
       'attachFileIds': attachFileIds,
     };
   }
+
+  List<String> validate() {
+    List<String> errors = [];
+
+    if (id.trim().isEmpty) {
+      errors.add("ID is required.");
+    }
+
+    if (employeeId.trim().isEmpty) {
+      errors.add("Employee must required.");
+    }
+
+    if (amount <= 0) {
+      errors.add("Expense amount must be greater than 0.00");
+    }
+
+    if (siteId.trim().isEmpty) {
+      errors.add("Site must be required.");
+    }
+
+    if (addedAt.isAfter(DateTime.now())) {
+      errors.add("Money add time must me now or before.");
+    }
+
+    return errors;
+  }
 }

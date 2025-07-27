@@ -8,8 +8,11 @@ import 'package:work_ledger/models/attach_file.dart';
 import 'package:work_ledger/models/company_bill_payment.dart';
 import 'package:work_ledger/models/employee.dart';
 import 'package:work_ledger/models/employee_attendance.dart';
+import 'package:work_ledger/models/employee_hold_transaction.dart';
 import 'package:work_ledger/models/employee_salary_generate.dart';
 import 'package:work_ledger/models/employee_wallet_transaction.dart';
+import 'package:work_ledger/models/expense.dart';
+import 'package:work_ledger/models/hold_amount.dart';
 import 'package:work_ledger/models/site.dart';
 import 'package:work_ledger/models/site_payment_role.dart';
 import 'package:work_ledger/models/skill.dart';
@@ -20,6 +23,7 @@ import 'package:work_ledger/screens/employee_attendance_screen.dart';
 import 'package:work_ledger/screens/employee_list_screen.dart';
 import 'package:work_ledger/screens/employee_salary_generate_list_screen.dart';
 import 'package:work_ledger/screens/employee_screen.dart';
+import 'package:work_ledger/screens/expense_trans_screen.dart';
 import 'package:work_ledger/screens/site_list_screen.dart';
 import 'package:work_ledger/screens/site_screen.dart';
 import 'package:work_ledger/screens/skill_list_screen.dart';
@@ -54,6 +58,9 @@ void main() async {
   Hive.registerAdapter(EmployeeSalaryGenerateAdapter());
   Hive.registerAdapter(EmployeeWalletTransactionAdapter());
   Hive.registerAdapter(AttachFileAdapter());
+  Hive.registerAdapter(ExpenseAdapter());
+  Hive.registerAdapter(HoldAmountAdapter());
+  Hive.registerAdapter(EmployeeHoldTransactionAdapter());
 
   await Hive.openBox<Company>(BOX_COMPANY);
   await Hive.openBox<Skill>(BOX_SKILL);
@@ -65,6 +72,9 @@ void main() async {
   await Hive.openBox<EmployeeWalletTransaction>(
       BOX_EMPLOYEE_WALLET_TRANSACTION);
   await Hive.openBox<AttachFile>(BOX_ATTACH_FILE);
+  await Hive.openBox<Expense>(BOX_EXPENSE);
+  await Hive.openBox<HoldAmount>(BOX_HOLD_AMOUNT);
+  await Hive.openBox<EmployeeHoldTransaction>(BOX_EMPLOYEE_HOLD_TRANSACTION);
 
   runApp(MyApp());
   Helper.listenForNetworkChanges();
@@ -122,6 +132,12 @@ class MyApp extends StatelessWidget {
           final site = routePath.arguments as Site;
           return MaterialPageRoute(
             builder: (context) => EmployeeAttendanceScreen(site: site),
+          );
+        }
+        if (routePath.name == '/expense_trans') {
+          final employee = routePath.arguments as Employee;
+          return MaterialPageRoute(
+            builder: (context) => ExpenseTransScreen(employee: employee),
           );
         }
         return null;

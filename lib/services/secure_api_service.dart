@@ -3,11 +3,15 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:work_ledger/db_constants.dart';
 import 'package:work_ledger/db_models/db_attach_file.dart';
+import 'package:work_ledger/db_models/db_employee.dart';
 import 'package:work_ledger/db_models/db_site.dart';
 import 'package:work_ledger/db_models/db_user_prefs.dart';
 import 'package:work_ledger/models/attach_file.dart';
 import 'package:work_ledger/models/company.dart';
 import 'package:work_ledger/models/company_bill_payment.dart';
+import 'package:work_ledger/models/employee.dart';
+import 'package:work_ledger/models/expense.dart';
+import 'package:work_ledger/models/hold_amount.dart';
 import 'package:work_ledger/models/site.dart';
 import 'package:work_ledger/models/skill.dart';
 import 'package:work_ledger/services/api_constant.dart';
@@ -613,6 +617,181 @@ class SecureApiService {
     } catch (e) {
       print("Create error: $e");
       return null;
+    }
+  }
+
+  /// HOLD AMOUNT ////
+  static Future<Map<String, dynamic>?> createHoldAmount(HoldAmount hold) async {
+    try {
+      Site? site = DBSite.find(hold.siteId);
+      Employee? employee = DBEmployee.find(hold.employeeId);
+      if (site != null && employee != null) {
+        final uri = Uri.parse('${API_PATH}hold_amounts');
+
+        final request = http.MultipartRequest('POST', uri);
+        request.headers.addAll(await getHeaders());
+
+        // Add nested fields
+        request.fields['hold_amount[added_at]'] =
+            hold.addedAt.toIso8601String();
+        request.fields['hold_amount[remarks]'] = hold.remarks;
+        request.fields['hold_amount[amount]'] = hold.amount.toString();
+        request.fields['hold_amount[site_id]'] = site.serverId!;
+        request.fields['hold_amount[employee_id]'] = employee.serverId!;
+
+        // Attach files
+        for (final attachFileId in hold.attachFileIds) {
+          AttachFile? filePath = DBAttachFile.find(attachFileId);
+          if (filePath != null) {
+            final file = File(filePath.localPath!);
+            if (await file.exists()) {
+              request.files.add(await http.MultipartFile.fromPath(
+                'attachments[]',
+                filePath.localPath!,
+              ));
+            }
+          }
+        }
+
+        final response = await request.send();
+        final body = await response.stream.bytesToString();
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return json.decode(body);
+        } else {
+          print('Hold amount POST failed: $body');
+          return null;
+        }
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print("Create Hold Amount Error: $e");
+      return null;
+    }
+  }
+
+  // ----------------------------
+  // FETCH HOLD AMOUNTS (INDEX)
+  // ----------------------------
+  static Future<List<Map<String, dynamic>>> fetchHoldAmountsFromServer() async {
+    try {
+      String apiURL = '${API_PATH}hold_amounts?ANY_FIXED_PARAMS=0';
+      String lastSyncedAt = await DBUserPrefs().getPreference(
+        HOLD_AMOUNT_SYNCED_AT,
+      );
+      if (lastSyncedAt.isNotEmpty) {
+        apiURL = '$apiURL&updated_after=$lastSyncedAt';
+      }
+
+      final res =
+          await http.get(Uri.parse(apiURL), headers: await getHeaders());
+      if (res.statusCode == 200) {
+        final jaonRes = json.decode(res.body);
+        final List data = jaonRes;
+        List<Map<String, dynamic>> sHoldAmounts = [];
+        for (var e in data) {
+          sHoldAmounts.add(e);
+        }
+        return sHoldAmounts;
+      } else {
+        print('Fetch Error: ${res.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('Fetch Hold Amounts Error: $e');
+      return [];
+    }
+  }
+
+  /// EXPENSE ////
+  static Future<Map<String, dynamic>?> createExpense(Expense expense) async {
+    try {
+      Site? site = DBSite.find(expense.siteId);
+      Employee? expenseBy = DBEmployee.find(expense.expenseById);
+      Employee? expenseTo;
+      if (site != null && expenseBy != null) {
+        if (expense.expenseToId != null) {
+          expenseTo = DBEmployee.find(expense.expenseToId!);
+        }
+        final uri = Uri.parse('${API_PATH}expenses');
+
+        final request = http.MultipartRequest('POST', uri);
+        request.headers.addAll(await getHeaders());
+
+        // Add nested fields
+        request.fields['expense[expense_at]'] =
+            expense.expenseAt.toIso8601String();
+        request.fields['expense[remarks]'] = expense.remarks;
+        request.fields['expense[amount]'] = expense.amount.toString();
+        request.fields['expense[site_id]'] = site.serverId!;
+        request.fields['expense[expense_by_id]'] = expenseBy.serverId!;
+        if (expenseTo != null) {
+          request.fields['expense[expense_to_id]'] = expenseTo.serverId!;
+        }
+
+        // Attach files
+        for (final attachFileId in expense.attachFileIds) {
+          AttachFile? filePath = DBAttachFile.find(attachFileId);
+          if (filePath != null) {
+            final file = File(filePath.localPath!);
+            if (await file.exists()) {
+              request.files.add(await http.MultipartFile.fromPath(
+                'attachments[]',
+                filePath.localPath!,
+              ));
+            }
+          }
+        }
+
+        final response = await request.send();
+        final body = await response.stream.bytesToString();
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return json.decode(body);
+        } else {
+          print('Expense POST failed: $body');
+          return null;
+        }
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print("Create Expense Error: $e");
+      return null;
+    }
+  }
+
+  // ----------------------------
+  // FETCH EXPENSES (INDEX)
+  // ----------------------------
+  static Future<List<Map<String, dynamic>>> fetchExpensesFromServer() async {
+    try {
+      String apiURL = '${API_PATH}expenses?ANY_FIXED_PARAMS=0';
+      String lastSyncedAt = await DBUserPrefs().getPreference(
+        EXPENSE_SYNCED_AT,
+      );
+      if (lastSyncedAt.isNotEmpty) {
+        apiURL = '$apiURL&updated_after=$lastSyncedAt';
+      }
+
+      final res =
+          await http.get(Uri.parse(apiURL), headers: await getHeaders());
+      if (res.statusCode == 200) {
+        final jaonRes = json.decode(res.body);
+        final List data = jaonRes;
+        List<Map<String, dynamic>> sHoldAmounts = [];
+        for (var e in data) {
+          sHoldAmounts.add(e);
+        }
+        return sHoldAmounts;
+      } else {
+        print('Fetch Error: ${res.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('Fetch expenses Error: $e');
+      return [];
     }
   }
 }

@@ -54,4 +54,8 @@ class DBExpense {
       return null;
     }
   }
+
+  static List<Expense> getUnSynced() {
+    return getAllExpenses().where((f) => !f.isSynced).toList();
+  }
 }

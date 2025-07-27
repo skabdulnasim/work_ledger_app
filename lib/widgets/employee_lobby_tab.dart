@@ -94,7 +94,11 @@ class _EmployeeLobbyTabState extends State<EmployeeLobbyTab> {
                         icon: Icon(Icons.bar_chart),
                         label: Text("Transactions"),
                         onPressed: () {
-                          // Handle button tap
+                          Navigator.pushNamed(
+                            context,
+                            '/expense_trans',
+                            arguments: employee, // Pass the site object here
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color.fromARGB(255, 255, 235, 170),
@@ -120,31 +124,35 @@ class _EmployeeLobbyTabState extends State<EmployeeLobbyTab> {
 
   Widget _buildInfoRow(IconData icon, String label, String value,
       {Color? valueColor, Widget? trailing}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Icon(icon, color: Colors.grey.shade600, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey)),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: valueColor ?? Colors.black,
-                ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: Colors.grey.shade600, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey)),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: valueColor ?? Colors.black,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         if (trailing != null) trailing
       ],
