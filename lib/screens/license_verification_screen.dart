@@ -69,6 +69,7 @@ class _LicenseVerificationScreenState extends State<LicenseVerificationScreen> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
+            Expanded(child: Text("")),
             Text("License Code", style: TextStyle(fontSize: 18)),
             SizedBox(height: 12),
             TextField(
@@ -78,18 +79,24 @@ class _LicenseVerificationScreenState extends State<LicenseVerificationScreen> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _verifyLicense,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 14),
+                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6), // small border radius
                 ),
               ),
-              child: Text("VERIFY NOW",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                "VERIFY NOW",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontSize: 18,
+                ),
+              ),
+              onPressed: () => _verifyLicense(),
             ),
+            Expanded(child: Text("")),
           ],
         ),
       ),

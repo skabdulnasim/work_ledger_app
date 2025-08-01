@@ -14,6 +14,12 @@ class _IntroScreenState extends State<IntroScreen> {
     'assets/images/slide1.png',
     'assets/images/slide2.png',
     'assets/images/slide3.png',
+    'assets/images/slide4.png',
+    'assets/images/slide5.png',
+    'assets/images/slide6.png',
+    'assets/images/slide7.png',
+    'assets/images/slide8.png',
+    'assets/images/slide9.png',
   ];
 
   int _currentIndex = 0;
@@ -80,9 +86,7 @@ class _IntroScreenState extends State<IntroScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            SizedBox(
-              height: 10,
-            ),
+            Expanded(child: Text("")),
             SizedBox(
               height: screenHeight * 0.53,
               child: Stack(
@@ -103,7 +107,7 @@ class _IntroScreenState extends State<IntroScreen> {
                     items: images.map((imagePath) {
                       return Container(
                         padding:
-                            EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                            EdgeInsets.symmetric(horizontal: 40, vertical: 22),
                         child: Image.asset(
                           imagePath,
                           fit: BoxFit.contain,
@@ -173,7 +177,7 @@ class _IntroScreenState extends State<IntroScreen> {
               ),
               onPressed: () => checkAppFlow(),
             ),
-            SizedBox(height: 20),
+            Expanded(child: Text("")),
           ],
         ),
       ),
