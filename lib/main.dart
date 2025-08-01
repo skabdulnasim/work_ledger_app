@@ -13,10 +13,12 @@ import 'package:work_ledger/models/employee_salary_generate.dart';
 import 'package:work_ledger/models/employee_wallet_transaction.dart';
 import 'package:work_ledger/models/expense.dart';
 import 'package:work_ledger/models/hold_amount.dart';
+import 'package:work_ledger/models/my_client.dart';
 import 'package:work_ledger/models/site.dart';
 import 'package:work_ledger/models/site_payment_role.dart';
 import 'package:work_ledger/models/skill.dart';
 import 'package:work_ledger/screens/bill_payment_list_screen.dart';
+import 'package:work_ledger/screens/client_register_screen.dart';
 import 'package:work_ledger/screens/company_list_screen.dart';
 import 'package:work_ledger/screens/company_screen.dart';
 import 'package:work_ledger/screens/employee_attendance_screen.dart';
@@ -24,11 +26,14 @@ import 'package:work_ledger/screens/employee_list_screen.dart';
 import 'package:work_ledger/screens/employee_salary_generate_list_screen.dart';
 import 'package:work_ledger/screens/employee_screen.dart';
 import 'package:work_ledger/screens/expense_trans_screen.dart';
+import 'package:work_ledger/screens/intro_screen.dart';
+import 'package:work_ledger/screens/license_verification_screen.dart';
 import 'package:work_ledger/screens/site_list_screen.dart';
 import 'package:work_ledger/screens/site_screen.dart';
 import 'package:work_ledger/screens/skill_list_screen.dart';
 import 'package:work_ledger/screens/skill_screen.dart';
 import 'package:work_ledger/screens/splash_screen.dart';
+import 'package:work_ledger/screens/subscription_screen.dart';
 import 'package:work_ledger/services/helper.dart';
 import 'models/company.dart';
 import 'screens/login_screen.dart';
@@ -61,6 +66,7 @@ void main() async {
   Hive.registerAdapter(ExpenseAdapter());
   Hive.registerAdapter(HoldAmountAdapter());
   Hive.registerAdapter(EmployeeHoldTransactionAdapter());
+  Hive.registerAdapter(MyClientAdapter());
 
   await Hive.openBox<Company>(BOX_COMPANY);
   await Hive.openBox<Skill>(BOX_SKILL);
@@ -75,6 +81,7 @@ void main() async {
   await Hive.openBox<Expense>(BOX_EXPENSE);
   await Hive.openBox<HoldAmount>(BOX_HOLD_AMOUNT);
   await Hive.openBox<EmployeeHoldTransaction>(BOX_EMPLOYEE_HOLD_TRANSACTION);
+  await Hive.openBox<MyClient>(BOX_CLIENT);
 
   runApp(MyApp());
   Helper.listenForNetworkChanges();
@@ -87,8 +94,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      initialRoute: '/splash',
+      initialRoute: '/intro',
       routes: {
+        '/intro': (context) => IntroScreen(),
+        '/register': (context) => ClientRegisterScreen(),
+        '/license': (context) => LicenseVerificationScreen(),
         '/splash': (context) => const SplashScreen(),
         '/companies': (context) => CompanyListScreen(),
         '/sites': (context) => SiteListScreen(),
@@ -138,6 +148,12 @@ class MyApp extends StatelessWidget {
           final employee = routePath.arguments as Employee;
           return MaterialPageRoute(
             builder: (context) => ExpenseTransScreen(employee: employee),
+          );
+        }
+        if (routePath.name == '/subscribe') {
+          final client = routePath.arguments as Map;
+          return MaterialPageRoute(
+            builder: (context) => SubscriptionScreen(client: client),
           );
         }
         return null;

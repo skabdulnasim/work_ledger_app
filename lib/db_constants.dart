@@ -11,8 +11,14 @@ const ATTACH_FILE_BOX_TYPE = 10;
 const EMPLOYEE_HOLD_TRANSACTION_BOX_TYPE = 11;
 const HOLD_AMOUNT_BOX_TYPE = 12;
 const EXPENSE_BOX_TYPE = 13;
+const CLIENT_BOX_TYPE = 14;
 
 const TOKEN = 'token';
+const BASE_URL = 'ac_base_url';
+const API_BASE_URL = 'ac_api_base_url';
+const SUBDOAMIN = 'ac_subdomain';
+const VALIDITY = 'ac_validity';
+
 const COMPANY_SYNCED_AT = 'company_synced_at';
 const SKILL_SYNCED_AT = 'skill_synced_at';
 const SITE_SYNCED_AT = 'site_synced_at';
@@ -37,3 +43,4 @@ const BOX_ATTACH_FILE = "attach_files";
 const BOX_EMPLOYEE_HOLD_TRANSACTION = 'employee_hold_transactions';
 const BOX_EXPENSE = 'expenses';
 const BOX_HOLD_AMOUNT = 'hold_amounts';
+const BOX_CLIENT = 'clients';

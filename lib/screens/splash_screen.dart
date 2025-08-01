@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:work_ledger/db_constants.dart';
+import 'package:work_ledger/db_models/db_my_client.dart';
 import 'package:work_ledger/db_models/db_user_prefs.dart';
 import 'package:work_ledger/services/sync_manager.dart';
 
@@ -21,36 +22,70 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _startInitialization() async {
+    final myClient = DBMyClient.getMyClient();
+    final subdomain = await DBUserPrefs().getPreference(SUBDOAMIN);
+    final apiBaseUrl = await DBUserPrefs().getPreference(API_BASE_URL);
+    final validity = await DBUserPrefs().getPreference(VALIDITY);
     final token = await DBUserPrefs().getPreference(TOKEN);
-    if (token != null && token.toString().isNotEmpty) {
-      syncSteps.addAll([
-        () => SyncManager().syncCompaniesFromServer(),
-        () => SyncManager().syncPendingCompanies(),
-        () => SyncManager().syncSkillsFromServer(),
-        () => SyncManager().syncPendingSkills(),
-        () => SyncManager().syncSitesFromServer(),
-        () => SyncManager().syncPendingSites(),
-        () => SyncManager().syncComBillPayFromServer(),
-        () => SyncManager().syncPendingCompanyBillPayments(),
-        () => SyncManager().syncEmployeesFromServer(),
-        () => SyncManager().syncPendingEmployees(),
-        () => SyncManager().syncEmployeeAttendancesFromServer(),
-        () => SyncManager().syncPendingEmployeeAttendances(),
-        () => SyncManager().syncEmployeeSalaryGeneratesFromServer(),
-        () => SyncManager().syncPendingEmployeeSalaryGenerates(),
-        () => SyncManager().syncHoldAmountFromServer(),
-        () => SyncManager().syncPendingHoldAmounts(),
-        () => SyncManager().syncExpensesFromServer(),
-        () => SyncManager().syncPendingExpenses(),
-      ]);
 
-      await _runSyncSteps();
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/sites');
+    final now = DateTime.now();
+    print('VALIDITY: ${validity}');
+    final validTill = (validity != '') ? DateTime.parse(validity) : null;
+
+    if (subdomain != null &&
+        apiBaseUrl != null &&
+        validTill != null &&
+        myClient != null) {
+      if (validTill.isAfter(now)) {
+        if (token != null && token.toString().isNotEmpty) {
+          syncSteps.addAll([
+            () => SyncManager().syncCompaniesFromServer(),
+            () => SyncManager().syncPendingCompanies(),
+            () => SyncManager().syncSkillsFromServer(),
+            () => SyncManager().syncPendingSkills(),
+            () => SyncManager().syncSitesFromServer(),
+            () => SyncManager().syncPendingSites(),
+            () => SyncManager().syncComBillPayFromServer(),
+            () => SyncManager().syncPendingCompanyBillPayments(),
+            () => SyncManager().syncEmployeesFromServer(),
+            () => SyncManager().syncPendingEmployees(),
+            () => SyncManager().syncEmployeeAttendancesFromServer(),
+            () => SyncManager().syncPendingEmployeeAttendances(),
+            () => SyncManager().syncEmployeeSalaryGeneratesFromServer(),
+            () => SyncManager().syncPendingEmployeeSalaryGenerates(),
+            () => SyncManager().syncHoldAmountFromServer(),
+            () => SyncManager().syncPendingHoldAmounts(),
+            () => SyncManager().syncExpensesFromServer(),
+            () => SyncManager().syncPendingExpenses(),
+          ]);
+
+          await _runSyncSteps();
+          if (!mounted) return;
+          Navigator.of(context).pushReplacementNamed('/sites');
+        } else {
+          await Future.delayed(const Duration(seconds: 1));
+          if (!mounted) return;
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+      } else {
+        final client = {
+          'id': myClient.serverId,
+          'name': myClient.name,
+          'mobile': myClient.mobile,
+          'address': myClient.address,
+          'subdomain': myClient.subdomain,
+        };
+
+        if (!mounted) return;
+        Navigator.pushNamed(
+          context,
+          '/subscribe',
+          arguments: client,
+        );
+      }
     } else {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/login');
+      // DATA MISSING
+      Navigator.pushReplacementNamed(context, '/register');
     }
   }
 

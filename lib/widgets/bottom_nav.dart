@@ -28,7 +28,7 @@ class BottomNav extends StatelessWidget {
           clipper: BottomBarClipper(),
           child: Container(
             height: 70,
-            color: const Color.fromARGB(255, 255, 235, 170),
+            color: Colors.black,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -49,9 +49,7 @@ class BottomNav extends StatelessWidget {
               height: 60,
               width: 60,
               decoration: BoxDecoration(
-                color: currentIndex == 1
-                    ? const Color.fromARGB(255, 2, 255, 31)
-                    : const Color.fromARGB(255, 0, 191, 22),
+                color: currentIndex == 1 ? Colors.blueGrey : Colors.grey,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(color: Colors.black26, blurRadius: 8),
@@ -60,8 +58,8 @@ class BottomNav extends StatelessWidget {
               child: Icon(Icons.location_on,
                   size: 32,
                   color: currentIndex == 1
-                      ? Colors.blueAccent
-                      : Colors.grey.shade600),
+                      ? Colors.white
+                      : const Color.fromARGB(255, 136, 174, 241)),
             ),
           ),
         ),
@@ -77,11 +75,15 @@ class BottomNav extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon,
-              color: isSelected ? Colors.blueAccent : Colors.grey.shade600),
+              color: isSelected
+                  ? Colors.white
+                  : const Color.fromARGB(255, 136, 174, 241)),
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.blueAccent : Colors.grey.shade600,
+              color: isSelected
+                  ? Colors.white
+                  : const Color.fromARGB(255, 136, 174, 241),
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),

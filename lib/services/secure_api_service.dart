@@ -14,9 +14,13 @@ import 'package:work_ledger/models/expense.dart';
 import 'package:work_ledger/models/hold_amount.dart';
 import 'package:work_ledger/models/site.dart';
 import 'package:work_ledger/models/skill.dart';
-import 'package:work_ledger/services/api_constant.dart';
 
 class SecureApiService {
+  static Future<String> api_base_url() async {
+    String _apiBaseUrl = await DBUserPrefs().getPreference(API_BASE_URL);
+    return _apiBaseUrl;
+  }
+
   /////////////// HEADER
   static Future<Map<String, String>> getHeaders() async {
     final authToken = await DBUserPrefs().getPreference(TOKEN);
@@ -38,7 +42,8 @@ class SecureApiService {
   // ----------------------------
   static Future<Map<String, dynamic>?> createCompany(Company company) async {
     try {
-      String apiURL = '${API_PATH}companies';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}companies';
 
       final response = await http.post(
         Uri.parse(apiURL),
@@ -62,8 +67,9 @@ class SecureApiService {
   // ----------------------------
   static Future<Map<String, dynamic>?> updateCompany(Company company) async {
     try {
+      final apiBaseUrl = await api_base_url();
       final response = await http.put(
-        Uri.parse('${API_PATH}companies/${company.serverId}'),
+        Uri.parse('${apiBaseUrl}companies/${company.serverId}'),
         headers: await getHeaders(),
         body: jsonEncode(company.toJson()),
       );
@@ -84,7 +90,8 @@ class SecureApiService {
   // ----------------------------
   static Future<List<Company>> fetchCompaniesFromServer() async {
     try {
-      String apiURL = '${API_PATH}companies?ANY_FIXED_PARAMS=0';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}companies?ANY_FIXED_PARAMS=0';
       String lastSyncedAt = await DBUserPrefs().getPreference(
         COMPANY_SYNCED_AT,
       );
@@ -111,8 +118,9 @@ class SecureApiService {
   // ----------------------------
   static Future<bool> deleteCompany(int companyId) async {
     try {
+      final apiBaseUrl = await api_base_url();
       final response = await http.delete(
-        Uri.parse('${API_PATH}companies/$companyId'),
+        Uri.parse('${apiBaseUrl}companies/$companyId'),
         headers: await getHeaders(),
       );
       return response.statusCode == 204;
@@ -127,8 +135,9 @@ class SecureApiService {
   // ----------------------------
   static Future<Company?> getCompanyById(int id) async {
     try {
+      final apiBaseUrl = await api_base_url();
       final res = await http.get(
-        Uri.parse('${API_PATH}companies/$id'),
+        Uri.parse('${apiBaseUrl}companies/$id'),
         headers: await getHeaders(),
       );
       if (res.statusCode == 200) {
@@ -149,8 +158,9 @@ class SecureApiService {
   // ----------------------------
   static Future<Map<String, dynamic>?> createSkill(Skill skill) async {
     try {
+      final apiBaseUrl = await api_base_url();
       final response = await http.post(
-        Uri.parse('${API_PATH}employee_roles'),
+        Uri.parse('${apiBaseUrl}employee_roles'),
         headers: await getHeaders(),
         body: jsonEncode(skill.toJson()),
       );
@@ -171,8 +181,9 @@ class SecureApiService {
   // ----------------------------
   static Future<Map<String, dynamic>?> updateSkill(Skill skill) async {
     try {
+      final apiBaseUrl = await api_base_url();
       final response = await http.put(
-        Uri.parse('${API_PATH}employee_roles/${skill.serverId}'),
+        Uri.parse('${apiBaseUrl}employee_roles/${skill.serverId}'),
         headers: await getHeaders(),
         body: jsonEncode(skill.toJson()),
       );
@@ -193,7 +204,8 @@ class SecureApiService {
   // ----------------------------
   static Future<List<Skill>> fetchSkillsFromServer() async {
     try {
-      String apiURL = '${API_PATH}employee_roles?ANY_FIXED_PARAMS=0';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}employee_roles?ANY_FIXED_PARAMS=0';
       String lastSyncedAt = await DBUserPrefs().getPreference(
         EMPLOYEE_ROLE_SYNCED_AT,
       );
@@ -221,8 +233,9 @@ class SecureApiService {
   // ----------------------------
   static Future<Skill?> getSkillById(int id) async {
     try {
+      final apiBaseUrl = await api_base_url();
       final res = await http.get(
-        Uri.parse('${API_PATH}employee_roles/$id'),
+        Uri.parse('${apiBaseUrl}employee_roles/$id'),
         headers: await getHeaders(),
       );
       if (res.statusCode == 200) {
@@ -243,7 +256,8 @@ class SecureApiService {
   // ----------------------------
   static Future<List<Map<String, dynamic>>> fetchSitesFromServer() async {
     try {
-      String apiURL = '${API_PATH}sites?ANY_FIXED_PARAMS=0';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}sites?ANY_FIXED_PARAMS=0';
       String lastSyncedAt = await DBUserPrefs().getPreference(
         SITE_SYNCED_AT,
       );
@@ -277,7 +291,8 @@ class SecureApiService {
   static Future<Map<String, dynamic>?> createSite(
       Map<String, dynamic> payload) async {
     try {
-      String apiURL = '${API_PATH}sites';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}sites';
 
       final response = await http.post(
         Uri.parse(apiURL),
@@ -302,8 +317,9 @@ class SecureApiService {
   static Future<Map<String, dynamic>?> updateSite(
       Map<String, dynamic> payload, String serverId) async {
     try {
+      final apiBaseUrl = await api_base_url();
       final response = await http.put(
-        Uri.parse('${API_PATH}sites/$serverId'),
+        Uri.parse('${apiBaseUrl}sites/$serverId'),
         headers: await getHeaders(),
         body: jsonEncode(payload),
       );
@@ -325,7 +341,8 @@ class SecureApiService {
     try {
       Site? site = DBSite.find(payment.siteId);
       if (site != null) {
-        final uri = Uri.parse('${API_PATH}company_bill_payments');
+        final apiBaseUrl = await api_base_url();
+        final uri = Uri.parse('${apiBaseUrl}company_bill_payments');
 
         final request = http.MultipartRequest('POST', uri);
         request.headers.addAll(await getHeaders());
@@ -380,7 +397,8 @@ class SecureApiService {
   static Future<List<Map<String, dynamic>>>
       fetchCompanyBillPaymentsFromServer() async {
     try {
-      String apiURL = '${API_PATH}company_bill_payments?ANY_FIXED_PARAMS=0';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}company_bill_payments?ANY_FIXED_PARAMS=0';
       String lastSyncedAt = await DBUserPrefs().getPreference(
         COMPANY_BILL_PAY_SYNCED_AT,
       );
@@ -413,7 +431,8 @@ class SecureApiService {
   // ----------------------------
   static Future<List<Map<String, dynamic>>> fetchEmployeeFromServer() async {
     try {
-      String apiURL = '${API_PATH}employees?ANY_FIXED_PARAMS=0';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}employees?ANY_FIXED_PARAMS=0';
       String lastSyncedAt = await DBUserPrefs().getPreference(
         EMPLOYEE_SYNCED_AT,
       );
@@ -447,7 +466,8 @@ class SecureApiService {
   static Future<Map<String, dynamic>?> createEmployee(
       Map<String, dynamic> payload) async {
     try {
-      String apiURL = '${API_PATH}employees';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}employees';
 
       final response = await http.post(
         Uri.parse(apiURL),
@@ -472,8 +492,9 @@ class SecureApiService {
   static Future<Map<String, dynamic>?> updateEmployee(
       Map<String, dynamic> payload, String serverId) async {
     try {
+      final apiBaseUrl = await api_base_url();
       final response = await http.put(
-        Uri.parse('${API_PATH}employees/$serverId'),
+        Uri.parse('${apiBaseUrl}employees/$serverId'),
         headers: await getHeaders(),
         body: jsonEncode(payload),
       );
@@ -495,7 +516,8 @@ class SecureApiService {
   static Future<List<Map<String, dynamic>>>
       fetchEmployeeAttendanceFromServer() async {
     try {
-      String apiURL = '${API_PATH}employee_attendances?ANY_FIXED_PARAMS=0';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}employee_attendances?ANY_FIXED_PARAMS=0';
       String lastSyncedAt = await DBUserPrefs().getPreference(
         EMPLOYEE_ATTENDANCE_SYNCED_AT,
       );
@@ -529,7 +551,8 @@ class SecureApiService {
   static Future<Map<String, dynamic>?> createEmployeeAttendance(
       Map<String, dynamic> payload) async {
     try {
-      String apiURL = '${API_PATH}employee_attendances';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}employee_attendances';
 
       final response = await http.post(
         Uri.parse(apiURL),
@@ -554,8 +577,9 @@ class SecureApiService {
   static Future<Map<String, dynamic>?> updateEmployeeAttendance(
       Map<String, dynamic> payload, String serverId) async {
     try {
+      final apiBaseUrl = await api_base_url();
       final response = await http.put(
-        Uri.parse('${API_PATH}employee_attendances/$serverId'),
+        Uri.parse('${apiBaseUrl}employee_attendances/$serverId'),
         headers: await getHeaders(),
         body: jsonEncode(payload),
       );
@@ -577,7 +601,9 @@ class SecureApiService {
   static Future<List<Map<String, dynamic>>>
       fetchEmployeeSalaryGenerateFromServer() async {
     try {
-      String apiURL = '${API_PATH}employee_salary_generates?ANY_FIXED_PARAMS=0';
+      final apiBaseUrl = await api_base_url();
+      String apiURL =
+          '${apiBaseUrl}employee_salary_generates?ANY_FIXED_PARAMS=0';
       String lastSyncedAt = await DBUserPrefs().getPreference(
         EMPLOYEE_SALARY_GRNERATE_SYNCED_AT,
       );
@@ -605,7 +631,8 @@ class SecureApiService {
   static Future<Map<String, dynamic>?> createEmployeeSalaryGenerate(
       Map<String, dynamic> payload) async {
     try {
-      final url = '${API_PATH}employee_salary_generates/generate';
+      final apiBaseUrl = await api_base_url();
+      final url = '${apiBaseUrl}employee_salary_generates/generate';
       final res = await http.post(Uri.parse(url),
           headers: await getHeaders(), body: jsonEncode(payload));
       if (res.statusCode == 200 || res.statusCode == 201) {
@@ -626,7 +653,8 @@ class SecureApiService {
       Site? site = DBSite.find(hold.siteId);
       Employee? employee = DBEmployee.find(hold.employeeId);
       if (site != null && employee != null) {
-        final uri = Uri.parse('${API_PATH}hold_amounts');
+        final apiBaseUrl = await api_base_url();
+        final uri = Uri.parse('${apiBaseUrl}hold_amounts');
 
         final request = http.MultipartRequest('POST', uri);
         request.headers.addAll(await getHeaders());
@@ -676,7 +704,8 @@ class SecureApiService {
   // ----------------------------
   static Future<List<Map<String, dynamic>>> fetchHoldAmountsFromServer() async {
     try {
-      String apiURL = '${API_PATH}hold_amounts?ANY_FIXED_PARAMS=0';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}hold_amounts?ANY_FIXED_PARAMS=0';
       String lastSyncedAt = await DBUserPrefs().getPreference(
         HOLD_AMOUNT_SYNCED_AT,
       );
@@ -714,7 +743,8 @@ class SecureApiService {
         if (expense.expenseToId != null) {
           expenseTo = DBEmployee.find(expense.expenseToId!);
         }
-        final uri = Uri.parse('${API_PATH}expenses');
+        final apiBaseUrl = await api_base_url();
+        final uri = Uri.parse('${apiBaseUrl}expenses');
 
         final request = http.MultipartRequest('POST', uri);
         request.headers.addAll(await getHeaders());
@@ -767,7 +797,8 @@ class SecureApiService {
   // ----------------------------
   static Future<List<Map<String, dynamic>>> fetchExpensesFromServer() async {
     try {
-      String apiURL = '${API_PATH}expenses?ANY_FIXED_PARAMS=0';
+      final apiBaseUrl = await api_base_url();
+      String apiURL = '${apiBaseUrl}expenses?ANY_FIXED_PARAMS=0';
       String lastSyncedAt = await DBUserPrefs().getPreference(
         EXPENSE_SYNCED_AT,
       );
