@@ -28,13 +28,15 @@ class CompanyBillPaymentAdapter extends TypeAdapter<CompanyBillPayment> {
       transactionAt: fields[8] as DateTime,
       isSynced: fields[9] == null ? false : fields[9] as bool,
       attachFileIds: (fields[10] as List).cast<String>(),
+      balanceAmount: fields[11] as double,
+      createdAt: fields[12] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CompanyBillPayment obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +58,11 @@ class CompanyBillPaymentAdapter extends TypeAdapter<CompanyBillPayment> {
       ..writeByte(9)
       ..write(obj.isSynced)
       ..writeByte(10)
-      ..write(obj.attachFileIds);
+      ..write(obj.attachFileIds)
+      ..writeByte(11)
+      ..write(obj.balanceAmount)
+      ..writeByte(12)
+      ..write(obj.createdAt);
   }
 
   @override

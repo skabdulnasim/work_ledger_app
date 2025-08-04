@@ -76,4 +76,17 @@ class DBCompanyBillPayment {
       (site) => site.id.toString() == id.toString(),
     );
   }
+
+  /// Get the latest CompanyBillPayment for a site based on createdAt
+  static CompanyBillPayment? getLatestBySite(String siteId) {
+    final box = Hive.box<CompanyBillPayment>(BOX_COMPANY_BILL_PAYMENT);
+    final sitePayments =
+        box.values.where((payment) => payment.siteId == siteId).toList();
+
+    if (sitePayments.isEmpty) return null;
+
+    sitePayments.sort((a, b) =>
+        b.createdAt.compareTo(a.createdAt)); // descending by createdAt
+    return sitePayments.first;
+  }
 }

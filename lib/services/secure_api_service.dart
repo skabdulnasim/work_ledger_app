@@ -21,6 +21,11 @@ class SecureApiService {
     return _apiBaseUrl;
   }
 
+  static Future<String> base_url() async {
+    String _baseUrl = await DBUserPrefs().getPreference(BASE_URL);
+    return _baseUrl;
+  }
+
   /////////////// HEADER
   static Future<Map<String, String>> getHeaders() async {
     final authToken = await DBUserPrefs().getPreference(TOKEN);

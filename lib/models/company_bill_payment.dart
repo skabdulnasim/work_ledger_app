@@ -38,6 +38,12 @@ class CompanyBillPayment extends HiveObject {
   @HiveField(10)
   List<String> attachFileIds;
 
+  @HiveField(11)
+  double balanceAmount;
+
+  @HiveField(12)
+  DateTime createdAt;
+
   CompanyBillPayment({
     required this.id,
     this.serverId,
@@ -50,7 +56,9 @@ class CompanyBillPayment extends HiveObject {
     required this.transactionAt,
     this.isSynced = false,
     this.attachFileIds = const [],
-  });
+    this.balanceAmount = 0,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
   factory CompanyBillPayment.fromJson(Map<String, dynamic> json) {
     return CompanyBillPayment(
@@ -63,6 +71,7 @@ class CompanyBillPayment extends HiveObject {
       remarks: json['remarks'] ?? '',
       siteId: json['site_id'].toString(), // Must map to local Site
       transactionAt: DateTime.parse(json['transaction_at']),
+      balanceAmount: double.tryParse(json['balance_amount'].toString()) ?? 0,
       isSynced: true,
     );
   }
@@ -78,6 +87,8 @@ class CompanyBillPayment extends HiveObject {
         'site_id': siteId,
         'transaction_at': transactionAt.toIso8601String(),
         'attachFileIds': attachFileIds,
+        'balanceAmount': balanceAmount,
+        'createdAt': createdAt.toIso8601String(),
       };
 
   List<String> validate() {

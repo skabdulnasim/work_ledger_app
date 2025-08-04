@@ -55,7 +55,8 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
       ..name = nameController.text.trim()
       ..address = addressController.text.trim()
       ..mobileNo = mobileNoController.text.trim()
-      ..skillId = selectedSkill!.id!;
+      ..skillId = selectedSkill!.id!
+      ..isSynced = false;
     try {
       final box = Hive.box<Employee>(BOX_EMPLOYEE);
       if (!updated.isInBox) {

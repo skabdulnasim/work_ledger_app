@@ -23,7 +23,7 @@ class SiteAdapter extends TypeAdapter<Site> {
       isSynced: fields[3] as bool,
       serverId: fields[4] as String?,
       companyId: fields[5] as String,
-      sitePaymentRoles: (fields[6] as List?)?.cast<SitePaymentRole>(),
+      sitePaymentRoles: (fields[6] as List).cast<SitePaymentRole>(),
     );
   }
 

@@ -40,16 +40,25 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
 
   final ScrollController _scrollController = ScrollController();
 
+  @override
+  void initState() {
+    super.initState();
+  }
+
   void _sendPayment() async {
+    final double previousBalance = await _getPreviousBalance(widget.site.id!);
+    final double tranAmount =
+        double.tryParse(_amountController.text.trim()) ?? 0.0;
     final newPayment = CompanyBillPayment(
       id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
       transactionAt: selectedTransactionAt,
       billNo: _billNoController.text,
-      amount: double.tryParse(_amountController.text.trim()) ?? 0.0,
+      amount: tranAmount,
       paymentMode: selectedTransactionMode,
-      transactionType: "SENT",
+      transactionType: "debit",
       remarks: _remarksController.text,
       siteId: widget.site.id!,
+      balanceAmount: previousBalance - tranAmount,
       attachFileIds: [..._attachmentIds],
     );
 
@@ -91,15 +100,19 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
   }
 
   void _receivePayment() async {
+    final double previousBalance = await _getPreviousBalance(widget.site.id!);
+    final double tranAmount =
+        double.tryParse(_amountController.text.trim()) ?? 0.0;
     final newPayment = CompanyBillPayment(
       id: "LOCAL-${DateTime.now().microsecondsSinceEpoch}",
       transactionAt: selectedTransactionAt,
       billNo: _billNoController.text,
-      amount: double.tryParse(_amountController.text.trim()) ?? 0.0,
+      amount: tranAmount,
       paymentMode: selectedTransactionMode,
-      transactionType: "RECEIVED",
+      transactionType: "credit",
       remarks: _remarksController.text,
       siteId: widget.site.id!,
+      balanceAmount: previousBalance + tranAmount,
       attachFileIds: [..._attachmentIds],
     );
     if (newPayment.validate().isEmpty) {
@@ -294,13 +307,27 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
             ? "${_selectedMessageIds.length} selected"
             : widget.site.name,
         fixedAction: isSelectionMode
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: _deleteSelectedMessages,
-                ),
-              ]
-            : [],
+            ? []
+            : [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _getPreviousBalance(widget.site.id!) < 0
+                        ? Colors.red.withOpacity(0.1)
+                        : Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '₹${_getPreviousBalance(widget.site.id!).toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: _getPreviousBalance(widget.site.id!) < 0
+                          ? Colors.red
+                          : Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              ],
         menuActions: [
           {'label': 'Employee Attendance', 'value': 'employee_attendance'},
           {'label': 'Site Details', 'value': 'site'},
@@ -718,8 +745,17 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
     );
   }
 
+  double _getPreviousBalance(String siteId) {
+    final latestPayment = DBCompanyBillPayment.getLatestBySite(siteId);
+    if (latestPayment != null) {
+      return latestPayment.balanceAmount;
+    } else {
+      return 0.0;
+    }
+  }
+
   Widget _buildMessageBubble(CompanyBillPayment payment) {
-    final isSelf = payment.transactionType == "RECEIVED";
+    final isSelf = payment.transactionType == "credit";
 
     return Align(
       alignment: isSelf ? Alignment.centerRight : Alignment.centerLeft,
@@ -738,7 +774,15 @@ class _BillPaymentListScreenState extends State<BillPaymentListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Amount
+            Text(
+              "${payment.billNo}",
+              style: const TextStyle(
+                fontWeight: FontWeight.w300,
+                color: Colors.black45,
+                fontStyle: FontStyle.italic,
+                fontSize: 16,
+              ),
+            ),
             Text(
               "₹${payment.amount.toStringAsFixed(2)}",
               style: const TextStyle(

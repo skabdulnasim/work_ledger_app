@@ -33,6 +33,9 @@ class Helper {
         print("Hello Network");
 
         final String? token = await DBUserPrefs().getPreference(TOKEN);
+        print(token != null);
+        print(token!.isNotEmpty);
+        print(token);
         if (token != null && token.isNotEmpty) {
           print("SYNCING START...");
 

@@ -44,7 +44,6 @@ class _LicenseVerificationScreenState extends State<LicenseVerificationScreen> {
       print('VALIDITY:   ');
       if (l.isNotEmpty) {
         final data = l.first;
-        print(data.toString());
         print(data['valid_till']);
         await DBUserPrefs().savePreference(VALIDITY, data['valid_till']);
       } else {
@@ -55,7 +54,11 @@ class _LicenseVerificationScreenState extends State<LicenseVerificationScreen> {
         print(Helper.getJustDate(DateTime.now().add(Duration(days: 365))));
       }
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/login');
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/login',
+        (Route<dynamic> route) => false,
+      );
     } else {
       Helper.showMessage(context, "License verification failed!", false);
     }

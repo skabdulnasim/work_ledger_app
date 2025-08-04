@@ -74,7 +74,7 @@ class _IntroScreenState extends State<IntroScreen> {
       }
     } else {
       // DATA MISSING
-      Navigator.pushReplacementNamed(context, '/register');
+      Navigator.pushNamed(context, '/register');
     }
   }
 

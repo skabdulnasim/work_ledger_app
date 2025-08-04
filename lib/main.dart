@@ -51,8 +51,8 @@ void main() async {
   HttpOverrides.global = MyHttpOverrides();
 
   WidgetsFlutterBinding.ensureInitialized();
-  final dir = await getApplicationDocumentsDirectory();
-  await Hive.initFlutter(dir.path);
+
+  await setupHiveDirectory();
   Hive.registerAdapter(CompanyAdapter());
   Hive.registerAdapter(SkillAdapter());
   Hive.registerAdapter(SiteAdapter());
@@ -85,6 +85,27 @@ void main() async {
 
   runApp(MyApp());
   Helper.listenForNetworkChanges();
+}
+
+Future<void> setupHiveDirectory() async {
+  Directory appDir;
+
+  if (Platform.isWindows) {
+    // Custom directory for Windows
+    appDir =
+        Directory('${Platform.environment['LOCALAPPDATA']}\\work_ledger\\db');
+    if (!appDir.existsSync()) {
+      appDir.createSync(recursive: true);
+    }
+  } else if (Platform.isAndroid) {
+    // App-specific directory for Android
+    appDir = await getApplicationDocumentsDirectory();
+  } else {
+    throw UnsupportedError('Unsupported platform');
+  }
+
+  // Initialize Hive with the determined directory
+  Hive.init(appDir.path);
 }
 
 class MyApp extends StatelessWidget {

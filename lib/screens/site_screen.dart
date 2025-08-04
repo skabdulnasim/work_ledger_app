@@ -84,7 +84,8 @@ class _SiteScreenState extends State<SiteScreen> {
       ..name = nameController.text.trim()
       ..address = addressController.text.trim()
       ..companyId = selectedCompany!.id!
-      ..sitePaymentRoles = sitePaymentRoles;
+      ..sitePaymentRoles = sitePaymentRoles
+      ..isSynced = false;
     try {
       DBSite.upsertSite(updated);
 
@@ -262,7 +263,7 @@ class _SiteScreenState extends State<SiteScreen> {
                             sitePaymentRoles[index].overtimeRate.toString(),
                         onChanged: (value) {
                           sitePaymentRoles[index].overtimeRate =
-                              double.tryParse(value)!;
+                              double.tryParse(value) ?? 0;
                         },
                         validator: (value) {
                           if (value != null &&
@@ -287,15 +288,26 @@ class _SiteScreenState extends State<SiteScreen> {
         ),
         SizedBox(height: 8),
         ElevatedButton.icon(
-          onPressed: _addSitePayRole,
           icon: const Icon(
             Icons.add,
-            color: Colors.black,
+            color: Colors.white,
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black,
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
           ),
           label: const Text(
-            "Add Pay Role",
-            style: TextStyle(color: Colors.black),
+            "Add Payment Role",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontSize: 18,
+            ),
           ),
+          onPressed: _addSitePayRole,
         ),
 
         SizedBox(height: 16),

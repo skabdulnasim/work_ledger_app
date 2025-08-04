@@ -21,7 +21,7 @@ class Site extends HiveObject {
   @HiveField(5)
   String companyId;
   @HiveField(6)
-  List<SitePaymentRole>? sitePaymentRoles;
+  List<SitePaymentRole> sitePaymentRoles;
 
   Site({
     this.id,
@@ -30,7 +30,7 @@ class Site extends HiveObject {
     this.isSynced = false,
     this.serverId,
     required this.companyId,
-    this.sitePaymentRoles,
+    this.sitePaymentRoles = const [],
   });
 
   factory Site.fromJson(Map<String, dynamic> json) {

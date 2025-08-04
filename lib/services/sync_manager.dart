@@ -366,6 +366,7 @@ class SyncManager {
 
   Future<void> syncComBillPayFromServer() async {
     try {
+      final basePath = await SecureApiService.base_url();
       final comBillFromServer =
           await SecureApiService.fetchCompanyBillPaymentsFromServer();
       for (final cBillPay in comBillFromServer) {
@@ -379,13 +380,14 @@ class SyncManager {
 
           final List<String> downloadedAttachFileIds = [];
           final sAttachments = cBillPay['attachments'] as List<dynamic>;
+
           for (final attachment in sAttachments) {
             final filename = attachment['filename'];
             final relativeUrl = attachment['url'];
             final thmbUrl = attachment['thumb_url'];
             final fileType = attachment['type'];
-            final fullUrl = "$BASE_PATH$relativeUrl";
-            final thumbUrl = "$BASE_PATH$thmbUrl";
+            final fullUrl = "$basePath$relativeUrl";
+            final thumbUrl = "$basePath$thmbUrl";
 
             try {
               AttachFile f = AttachFile(
@@ -405,6 +407,7 @@ class SyncManager {
 
           existing
             ..amount = double.tryParse(cBillPay['amount']) ?? 0.0
+            ..balanceAmount = double.tryParse(cBillPay['balance_amount']) ?? 0.0
             ..transactionAt =
                 Helper.setStringToDateTime(cBillPay['transaction_at'])
             ..billNo = cBillPay['bill_no']
@@ -428,8 +431,8 @@ class SyncManager {
             final fileType = attachment['type'];
             final relativeUrl = attachment['url'];
             final thmUrl = attachment['thumb_url'];
-            final thumbUrl = "$BASE_PATH$thmUrl";
-            final fullUrl = "$BASE_PATH$relativeUrl";
+            final thumbUrl = "$basePath$thmUrl";
+            final fullUrl = "$basePath$relativeUrl";
 
             try {
               AttachFile f = AttachFile(
@@ -453,6 +456,7 @@ class SyncManager {
                 Helper.setStringToDateTime(cBillPay['transaction_at']),
             billNo: cBillPay['bill_no'],
             amount: double.tryParse(cBillPay['amount']) ?? 0.0,
+            balanceAmount: double.tryParse(cBillPay['balance_amount']) ?? 0.0,
             paymentMode: cBillPay['payment_mode'],
             transactionType: cBillPay['transaction_type'],
             remarks: cBillPay['remarks'] ?? '',
@@ -752,13 +756,24 @@ class SyncManager {
             double dayRate = 0;
 
             final site = DBSite.find(rec.siteId);
-            if (site != null) {
-              final paymentRole = site.sitePaymentRoles
-                  ?.firstWhere((role) => role.skillId == employee.skillId);
-              if (paymentRole != null) {
-                otRate = paymentRole.overtimeRate;
-                dayRate = paymentRole.dailyWage;
-              }
+            SitePaymentRole? paymentRole;
+
+            try {
+              paymentRole = site!.sitePaymentRoles.firstWhere(
+                (role) => role.skillId == employee.skillId,
+              );
+            } catch (e) {
+              paymentRole = null;
+            }
+
+            if (paymentRole != null) {
+              otRate = paymentRole.overtimeRate;
+              dayRate = paymentRole.dailyWage;
+            } else {
+              print(
+                  "Some employee skills have attendances but, there salary rate not set in site. \nPlease, cross check it!");
+              otRate = 0;
+              dayRate = 0;
             }
 
             if (rec.isFullDay == true) {
@@ -819,6 +834,8 @@ class SyncManager {
 
   Future<void> syncHoldAmountFromServer() async {
     try {
+      final basePath = await SecureApiService.base_url();
+
       final holdAmountFromServer =
           await SecureApiService.fetchHoldAmountsFromServer();
       for (final cHoldAmount in holdAmountFromServer) {
@@ -838,8 +855,8 @@ class SyncManager {
             final fileType = attachment['type'];
             final relativeUrl = attachment['url'];
             final thmUrl = attachment['thumb_url'];
-            final thumbUrl = "$BASE_PATH$thmUrl";
-            final fullUrl = "$BASE_PATH$relativeUrl";
+            final thumbUrl = "$basePath$thmUrl";
+            final fullUrl = "$basePath$relativeUrl";
 
             try {
               AttachFile f = AttachFile(
@@ -919,6 +936,8 @@ class SyncManager {
 
   Future<void> syncExpensesFromServer() async {
     try {
+      final basePath = await SecureApiService.base_url();
+
       final expensesFromServer =
           await SecureApiService.fetchExpensesFromServer();
       for (final cExpense in expensesFromServer) {
@@ -943,8 +962,8 @@ class SyncManager {
             final fileType = attachment['type'];
             final relativeUrl = attachment['url'];
             final thmUrl = attachment['thumb_url'];
-            final thumbUrl = "$BASE_PATH$thmUrl";
-            final fullUrl = "$BASE_PATH$relativeUrl";
+            final thumbUrl = "$basePath$thmUrl";
+            final fullUrl = "$basePath$relativeUrl";
 
             try {
               AttachFile f = AttachFile(

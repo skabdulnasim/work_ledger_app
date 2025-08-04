@@ -123,8 +123,7 @@ class _ClientRegisterScreenState extends State<ClientRegisterScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () =>
-                    Navigator.pushReplacementNamed(context, '/license'),
+                onPressed: () => Navigator.pushNamed(context, '/license'),
                 child: Text("I have already subscribed!"),
               ),
             ],
