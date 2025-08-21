@@ -25,6 +25,7 @@ class _EmployeeAttendanceTabState extends State<EmployeeAttendanceTab> {
 
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  EmployeeAttendance? selectedAttendance;
   Map<DateTime, EmployeeAttendance?> _attendanceMap = {};
 
   List<DateTime> visibleDates = [];
@@ -135,6 +136,8 @@ class _EmployeeAttendanceTabState extends State<EmployeeAttendanceTab> {
             onDaySelected: (selectedDay, focusedDay) {
               bool isValidDate =
                   DBEmployeeSalaryGenerate.isValidDate(selectedDay);
+              selectedAttendance =
+                  _attendanceMap[Helper.beginningOfDay(selectedDay)];
               if (isValidDate) {
                 setState(() {
                   _selectedDay = selectedDay;
@@ -169,9 +172,64 @@ class _EmployeeAttendanceTabState extends State<EmployeeAttendanceTab> {
             calendarStyle: CalendarStyle(
               markerSize: 40,
               selectedDecoration: BoxDecoration(
-                color: Colors.grey,
                 shape: BoxShape.circle,
-                // disable default
+                gradient: selectedAttendance != null
+                    ? selectedAttendance!.isFullDay
+                        ? LinearGradient(
+                            colors: [
+                              Colors.green,
+                              Colors.green,
+                              Colors.green,
+                              Colors.green
+                            ],
+                            stops: [0.0, 0.5, 0.5, 1.0], // sharp color split
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          )
+                        : selectedAttendance!.isHalfDay
+                            ? LinearGradient(
+                                colors: [
+                                  Colors.yellow,
+                                  Colors.yellow,
+                                  Colors.green,
+                                  Colors.green
+                                ],
+                                stops: [
+                                  0.0,
+                                  0.5,
+                                  0.5,
+                                  1.0
+                                ], // sharp color split
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              )
+                            : LinearGradient(
+                                colors: [
+                                  Colors.red,
+                                  Colors.red,
+                                  Colors.red,
+                                  Colors.red
+                                ],
+                                stops: [
+                                  0.0,
+                                  0.5,
+                                  0.5,
+                                  1.0
+                                ], // sharp color split
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              )
+                    : LinearGradient(
+                        colors: [
+                          Colors.red,
+                          Colors.red,
+                          Colors.red,
+                          Colors.red
+                        ],
+                        stops: [0.0, 0.5, 0.5, 1.0], // sharp color split
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
               ),
             ),
             calendarBuilders: CalendarBuilders(
@@ -372,6 +430,7 @@ class _EmployeeAttendanceTabState extends State<EmployeeAttendanceTab> {
                       // ✅ Update attendanceMap manually
                       setState(() {
                         _attendanceMap[Helper.beginningOfDay(date)] = att;
+                        selectedAttendance = att;
                       });
 
                       Navigator.pop(context);

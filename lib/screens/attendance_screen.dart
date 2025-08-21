@@ -11,15 +11,14 @@ import 'package:work_ledger/models/site.dart';
 import 'package:work_ledger/services/helper.dart';
 import 'package:work_ledger/widgets/three_state_switch.dart';
 
-class EmployeeAttendanceScreen extends StatefulWidget {
+class AttendanceScreen extends StatefulWidget {
   final Site site;
-  const EmployeeAttendanceScreen({super.key, required this.site});
+  const AttendanceScreen({super.key, required this.site});
   @override
-  _EmployeeAttendanceScreenState createState() =>
-      _EmployeeAttendanceScreenState();
+  _AttendanceScreenState createState() => _AttendanceScreenState();
 }
 
-class _EmployeeAttendanceScreenState extends State<EmployeeAttendanceScreen> {
+class _AttendanceScreenState extends State<AttendanceScreen> {
   List<Employee> employees = [];
   List<DateTime> dates = [];
 

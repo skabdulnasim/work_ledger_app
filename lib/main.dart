@@ -21,7 +21,7 @@ import 'package:work_ledger/screens/bill_payment_list_screen.dart';
 import 'package:work_ledger/screens/client_register_screen.dart';
 import 'package:work_ledger/screens/company_list_screen.dart';
 import 'package:work_ledger/screens/company_screen.dart';
-import 'package:work_ledger/screens/employee_attendance_screen.dart';
+import 'package:work_ledger/screens/attendance_screen.dart';
 import 'package:work_ledger/screens/employee_list_screen.dart';
 import 'package:work_ledger/screens/employee_salary_generate_list_screen.dart';
 import 'package:work_ledger/screens/employee_screen.dart';
@@ -162,7 +162,7 @@ class MyApp extends StatelessWidget {
         if (routePath.name == '/attendance') {
           final site = routePath.arguments as Site;
           return MaterialPageRoute(
-            builder: (context) => EmployeeAttendanceScreen(site: site),
+            builder: (context) => AttendanceScreen(site: site),
           );
         }
         if (routePath.name == '/expense_trans') {
